@@ -1,3 +1,7 @@
+import numpy as np
+from scipy.cluster.vq import vq, kmeans, whiten
+import matplotlib.pyplot as plt
+
 class Model:
     def __init__(self, action_space_n):
         self.states: list[np.ndarray] = []  # States are stored here
@@ -14,3 +18,17 @@ class Model:
                 self.state_action_transitions[actions[i - 1]].append(
                     (len(self.states) - 2, len(self.states) - 1)
                 )
+    
+    def run_k_means(self):
+        print("Running k-means...")
+        
+    def show_states(self):
+        states = np.array(self.states)  # Convert list of ndarrays to a 2D array
+        plt.figure()
+        for i in range(states.shape[1]):  # Loop through the 4 dimensions
+            plt.plot(states[:, i], label=f"State Dimension {i+1}")
+        plt.legend()
+        plt.xlabel("Time Step")
+        plt.ylabel("State Value")
+        plt.title("State Evolution Over Time")
+        plt.show()
