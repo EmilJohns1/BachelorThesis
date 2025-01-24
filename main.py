@@ -10,7 +10,7 @@ episode_rewards = []  # New addition
 
 render_mode = "human"  # Set to None to run without graphics
 
-env_manager = EnvironmentManager(render_mode=render_mode, seed=42)
+env_manager = EnvironmentManager(render_mode=render_mode)
 model = Model(action_space_n=env_manager.env.action_space.n)
 agent = Agent(model)
 
