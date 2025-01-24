@@ -8,9 +8,9 @@ import numpy as np
 # Add lists to track rewards for each episode
 episode_rewards = []  # New addition
 
-render_mode = None  # Set to None to run without graphics
+render_mode = "human"  # Set to None to run without graphics
 
-env_manager = EnvironmentManager(render_mode=render_mode, seed=0)
+env_manager = EnvironmentManager(render_mode=render_mode, seed=42)
 model = Model(action_space_n=env_manager.env.action_space.n)
 agent = Agent(model)
 
@@ -21,7 +21,7 @@ state, info = env_manager.reset()
 states.append(state)
 
 episodes = 0
-training_time = 100
+training_time = 50
 
 while True:
     if render_mode == "human":
@@ -42,10 +42,14 @@ while True:
     if terminated or truncated:
         print(f"rewards: {rewards}")
 
-        episode_rewards.append(rewards)  # New addition
+        if episodes > training_time:
+            episode_rewards.append(rewards)
 
         if episodes == training_time:
-            model.run_k_means()
+            model.run_k_means(k=1000)
+            model.update_transitions_and_rewards_for_clusters()
+
+            agent.use_clusters = True
 
              # Calculate running mean and std
             running_means = np.cumsum(episode_rewards) / np.arange(1, len(episode_rewards) + 1)

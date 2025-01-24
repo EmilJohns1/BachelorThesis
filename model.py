@@ -1,5 +1,6 @@
 import numpy as np
 from scipy.cluster.vq import vq, kmeans, whiten
+from scipy.cluster.vq import kmeans2
 import matplotlib.pyplot as plt
 
 class Model:
@@ -19,8 +20,44 @@ class Model:
                     (len(self.states) - 2, len(self.states) - 1)
                 )
     
-    def run_k_means(self):
+    def run_k_means(self, k):
         print("Running k-means...")
+        
+        states_array = np.array(self.states)
+        
+        centroids, labels = kmeans2(states_array, k, minit="points")
+        
+        self.clustered_states = centroids
+        self.cluster_labels = labels
+    
+    def update_transitions_and_rewards_for_clusters(self):
+        
+        # Initialize clustered transitions and rewards
+        num_clusters = len(self.clustered_states)
+        clustered_transitions = [[] for _ in range(len(self.state_action_transitions))]
+        clustered_rewards = [0.0 for _ in range(num_clusters)]
+        cluster_counts = [0 for _ in range(num_clusters)]
+
+        # Map original states and transitions to clusters
+        for action, transitions in enumerate(self.state_action_transitions):
+            for state_from, state_to in transitions:
+                cluster_from = self.cluster_labels[state_from]
+                cluster_to = self.cluster_labels[state_to]
+                clustered_transitions[action].append((cluster_from, cluster_to))
+        
+        # Aggregate rewards for clusters
+        for i, cluster_label in enumerate(self.cluster_labels):
+            clustered_rewards[cluster_label] += self.rewards[i]
+            cluster_counts[cluster_label] += 1
+
+        # Normalize rewards by the number of states in each cluster
+        for i in range(num_clusters):
+            if cluster_counts[i] > 0:
+                clustered_rewards[i] /= cluster_counts[i]
+
+        # Update the model with clustered transitions and rewards
+        self.state_action_transitions = clustered_transitions
+        self.rewards = clustered_rewards
         
     def show_states(self):
         states = np.array(self.states)  # Convert list of ndarrays to a 2D array
