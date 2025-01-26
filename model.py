@@ -1,5 +1,6 @@
 import numpy as np
 from scipy.cluster.vq import vq, kmeans, whiten
+from scipy.cluster.vq import kmeans2
 import matplotlib.pyplot as plt
 
 class Model:
@@ -35,4 +36,13 @@ class Model:
             self.M2[i] += delta*(new_state[i] - self.states_mean[i])
 
             self.states_std[i] = np.sqrt(self.M2[i]/n)
+
+    def run_k_means(self, k):
+        print("Running k-means...")
         
+        states_array = np.array(self.states)
+        
+        centroids, labels = kmeans2(states_array, k, minit="points")
+        
+        self.clustered_states = centroids
+        self.cluster_labels = labels

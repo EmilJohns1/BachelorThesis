@@ -34,7 +34,7 @@ class Agent:
         return action_rewards, weight_sums
 
     def get_action(self, action_rewards, weight_sums):
-        for action, _ in enumerate(self.model.state_action_transitions):# Hvorfor har vi state_action_transactions i stedet for weight_sums?
+        for action, _ in enumerate(self.model.state_action_transitions):
             if weight_sums[action] == 0:
                 return action  # Return action that has never been chosen before
             if weight_sums[action] / np.max(weight_sums) < self.exploration_rate:
