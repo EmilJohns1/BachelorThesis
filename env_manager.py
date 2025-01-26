@@ -1,16 +1,18 @@
 import gymnasium
 import pygame
 import numpy as np
+import random
 
 class EnvironmentManager:
-    def __init__(self, render_mode, seed):
+    def __init__(self, render_mode):
         self.env = gymnasium.make("CartPole-v1", render_mode=render_mode)
-        self.env.action_space.seed(seed)
-        np.random.seed(seed)
-        self.seed = seed
+        np.random.seed()
 
     def reset(self):
-        return self.env.reset(seed=self.seed)
+        random_seed = random.randint(0, 2**32 - 1)
+        self.env.action_space.seed(random_seed)
+        np.random.seed(random_seed)
+        return self.env.reset(seed=random_seed)
 
     def step(self, action):
         return self.env.step(action)
