@@ -4,12 +4,16 @@ from scipy.cluster.vq import kmeans2
 import matplotlib.pyplot as plt
 
 class Model:
-    def __init__(self, action_space_n, _discount_factor):
-        self.states: list[np.ndarray] = []  # States are stored here
-        self.rewards: list[float] = []  # Value for each state index
-        self.state_action_transitions: list[list[tuple[int, int]]] = [
-            [] for _ in range(action_space_n)
-        ]  # A list for each action
+    def __init__(self, action_space_n, _discount_factor, _observation_space):
+        self.states: np.ndarray = np.empty((0, _observation_space.shape[0]))  # States are stored here
+        self.rewards: np.ndarray = np.empty(0)  # Value for each state index
+
+        self.actions: list[int] = list(range(action_space_n))
+        # Lists for each action containing from and to state indices, i.e.
+        # in which state the action was performed and the resulting state of that action
+        self.state_action_transitions_from: list[list[int]] = [[] for _ in self.actions]
+        self.state_action_transitions_to: list[list[int]] = [[] for _ in self.actions]
+
         self.discount_factor: float = _discount_factor # Low discount factor penalizes longer episodes
         self.states_mean = np.array([0., 0., 0., 0.]) 
         self.M2 = np.array([0., 0., 0., 0.])
@@ -18,14 +22,13 @@ class Model:
     def update_model(self, states, actions, rewards):
         for i, state in enumerate(states):
             self.add_state(state)
-            self.rewards.append(np.power(self.discount_factor, len(states) - 1 - i) * rewards)
+            self.rewards = np.hstack((self.rewards, np.power(self.discount_factor, len(states) - 1 - i) * rewards))
             if i > 0:
-                self.state_action_transitions[actions[i - 1]].append(
-                    (len(self.states) - 2, len(self.states) - 1)
-                )
+                self.state_action_transitions_from[actions[i - 1]].append(len(self.states) - 2)
+                self.state_action_transitions_to[actions[i - 1]].append(len(self.states) - 1)
     
     def add_state(self, new_state):
-        self.states.append(new_state)
+        self.states = np.vstack((self.states, new_state))
         n = len(self.states)
 
         for i in range(4):

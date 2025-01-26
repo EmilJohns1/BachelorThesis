@@ -8,11 +8,10 @@ import time
 
 episode_rewards = []
 
-render_mode = "human"  # Set to None to run without graphics
+render_mode = None  # Set to None to run without graphics
 
-env_manager = EnvironmentManager(render_mode=render_mode, seed=0)
-model = Model(action_space_n=env_manager.env.action_space.n, _discount_factor=0.9999)
-
+env_manager = EnvironmentManager(render_mode=render_mode)
+model = Model(action_space_n=env_manager.env.action_space.n, _discount_factor=1, _observation_space=env_manager.env.observation_space)
 agent = Agent(model)
 
 rewards = 0.
@@ -22,8 +21,8 @@ state, info = env_manager.reset()
 states.append(state)
 
 episodes = 0
-training_time = 100
-
+training_time = 200
+start =time.time()
 while True:
     if render_mode == "human":
         for event in pygame.event.get():
@@ -32,8 +31,8 @@ while True:
                 exit()
 
     states_mean, states_std = agent.normalize_states()
-    action_rewards, weight_sums = agent.compute_action_rewards(state, states_mean, states_std)
-    action = agent.get_action(action_rewards, weight_sums)
+    action_rewards, action_weights = agent.compute_action_rewards(state, states_mean, states_std)
+    action = agent.get_action(action_rewards, action_weights)
 
     actions.append(action)
     state, reward, terminated, truncated, info = env_manager.step(action)
@@ -43,12 +42,15 @@ while True:
     if terminated or truncated:
         print(f"rewards: {rewards}")
 
-        if episodes > training_time:
-            episode_rewards.append(rewards)
+        episode_rewards.append(rewards)
 
         if episodes == training_time:
-            model.run_k_means(k=1000)
-            model.update_transitions_and_rewards_for_clusters()
+            end = time.time()
+            print("Time :{}".format(end-start))
+            env_manager = EnvironmentManager(render_mode="human")
+            
+            #model.run_k_means(k=1000)
+            #model.update_transitions_and_rewards_for_clusters()
 
             agent.use_clusters = True
 
