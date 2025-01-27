@@ -21,46 +21,23 @@ class Agent:
         return states_mean, states_std
 
     def compute_action_rewards(self, state, states_mean, states_std):
-        if self.use_clusters:
-            # Use clustered states
-            
-            # Compute action rewards based on clustered transitions
-            action_rewards = [0. for _ in self.model.state_action_transitions]
-            weight_sums = [0. for _ in self.model.state_action_transitions]
-            for i, transitions in enumerate(self.model.state_action_transitions):
-                for state_from, state_to in transitions:
-                    # Calculate distance between the current state and state_from's cluster center
-                    dist = np.linalg.norm(
-                        (state - states_mean) / states_std - self.model.clustered_states[state_from]
-                    )
-                    weight = np.exp(-dist / self.gaussian_width)
-                    weight_sums[i] += weight
-                    action_rewards[i] += weight * self.model.rewards[state_to]
-                if weight_sums[i] > 0.:
-                    action_rewards[i] /= weight_sums[i]
-            return action_rewards, weight_sums
+        action_rewards = [0. for _ in self.model.actions]
+        action_weights = [0. for _ in self.model.actions]
+        for action in self.model.actions:
+            if len(self.model.state_action_transitions_from[action]) > 0:
+                dist = (state - states_mean) / states_std - (
+                    self.model.states[self.model.state_action_transitions_from[action]] - states_mean
+                ) / states_std
+                weight = np.exp(-np.sum(np.square(dist), axis=1) / self.gaussian_width)
+                action_weights[action] = np.sum(weight)
+                action_rewards[action] = np.sum(weight * self.model.rewards[self.model.state_action_transitions_to[action]]
+                                            ) / action_weights[action]
+        return action_rewards, action_weights
 
-        else:
-            # Use original (non-clustered) states
-            action_rewards = [0. for _ in self.model.state_action_transitions]
-            weight_sums = [0. for _ in self.model.state_action_transitions]
-            for i, transitions in enumerate(self.model.state_action_transitions):
-                for state_from, state_to in transitions:
-                    dist = (
-                        (state - states_mean) / states_std -
-                        (self.model.states[state_from] - states_mean) / states_std
-                    )
-                    weight = np.exp(-np.sum(np.square(dist)) / self.gaussian_width)
-                    weight_sums[i] += weight
-                    action_rewards[i] += weight * self.model.rewards[state_to]
-                if weight_sums[i] > 0.:
-                    action_rewards[i] /= weight_sums[i]
-            return action_rewards, weight_sums
-
-    def get_action(self, action_rewards, weight_sums):
-        for action, _ in enumerate(self.model.state_action_transitions):
-            if weight_sums[action] == 0:
+    def get_action(self, action_rewards, action_weights):
+        for action in self.model.actions:
+            if action_weights[action] == 0:
                 return action  # Return action that has never been chosen before
-            if weight_sums[action] / np.max(weight_sums) < self.exploration_rate:
+            if action_weights[action] / np.max(action_weights) < self.exploration_rate:
                 return action  # Return action that has little data for the current state
         return np.argmax(action_rewards)
