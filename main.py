@@ -2,16 +2,17 @@ from env_manager import EnvironmentManager
 from model import Model
 from agent import Agent
 import pygame
-import matplotlib.pyplot as plt  # For plotting  # New addition
+import matplotlib.pyplot as plt
 import numpy as np
+import time
 
-# Add lists to track rewards for each episode
-episode_rewards = []  # New addition
+episode_rewards = []
 
 render_mode = "human"  # Set to None to run without graphics
 
 env_manager = EnvironmentManager(render_mode=render_mode)
-model = Model(action_space_n=env_manager.env.action_space.n)
+model = Model(action_space_n=env_manager.env.action_space.n, _discount_factor=0.9999)
+
 agent = Agent(model)
 
 rewards = 0.
@@ -21,7 +22,7 @@ state, info = env_manager.reset()
 states.append(state)
 
 episodes = 0
-training_time = 50
+training_time = 100
 
 while True:
     if render_mode == "human":

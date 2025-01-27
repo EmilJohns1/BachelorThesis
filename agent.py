@@ -8,11 +8,13 @@ class Agent:
         self.use_clusters = use_clusters
 
     def normalize_states(self):
-        states_mean = np.array([0.])
-        states_std = np.array([1.])
+        states_mean = np.array([0., 0., 0., 0.])
+        states_std = np.array([1., 1., 1., 1.])
+
         if len(self.model.states) > 0:
-            states_mean = np.mean(self.model.states, axis=0)
-            states_std = np.std(self.model.states, axis=0)
+            states_mean = self.model.states_mean
+            states_std = self.model.states_std
+
         for i, _ in enumerate(states_std):
             if states_std[i] == 0.:
                 states_std[i] = 1.
@@ -56,9 +58,9 @@ class Agent:
             return action_rewards, weight_sums
 
     def get_action(self, action_rewards, weight_sums):
-        for i, weight_sum in enumerate(weight_sums):
-            if weight_sum == 0:
-                return i  # Return action that has never been chosen before
-            if weight_sum / np.max(weight_sums) < self.exploration_rate:
-                return i  # Return action that has little data for the current state
+        for action, _ in enumerate(self.model.state_action_transitions):
+            if weight_sums[action] == 0:
+                return action  # Return action that has never been chosen before
+            if weight_sums[action] / np.max(weight_sums) < self.exploration_rate:
+                return action  # Return action that has little data for the current state
         return np.argmax(action_rewards)
