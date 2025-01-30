@@ -43,11 +43,11 @@ class Model:
             self.states_std[i] = np.sqrt(self.M2[i]/n)
 
     def run_k_means(self, k):
-        gaussian_width = 0.2
+        gaussian_width = 0.3
         print("Running k-means...")
         
         states_array = np.array(self.states)
-        weights = softmax(self.rewards)
+        reward_weights = softmax(self.rewards)
 
         # Compute distances from mean state (or an alternative reference point)
         mean_state = np.mean(states_array, axis=0)  # Could also use median or a specific state
@@ -56,13 +56,15 @@ class Model:
 
         # Apply Gaussian weighting function
         gaussian_weights = np.exp(-squared_dist / gaussian_width)
+        sample_weight = reward_weights*gaussian_weights
         
-        centroids, labels, inertia = k_means(X=states_array, n_clusters=k, sample_weight=gaussian_weights)
+        centroids, labels, inertia = k_means(X=states_array, n_clusters=k, sample_weight=reward_weights)
         
         self.clustered_states = centroids
         self.cluster_labels = labels
     
     def update_transitions_and_rewards_for_clusters(self):
+        gaussian_width = 0.15
         # Map states to clusters
         state_to_cluster = {i: self.cluster_labels[i] for i in range(len(self.states))}
         
@@ -81,3 +83,31 @@ class Model:
         # Update model transitions
         self.state_action_transitions_from = clustered_transitions_from
         self.state_action_transitions_to = clustered_transitions_to
+
+         # Initialize rewards for clusters
+        num_clusters = len(self.clustered_states)
+        cluster_rewards = np.zeros(num_clusters)
+        cluster_weights = np.zeros(num_clusters)  # Sum of weights for normalization
+
+        # Compute new rewards for clusters
+        states_array = np.array(self.states)
+
+        for i, centroid in enumerate(self.clustered_states):
+            # Compute distances between centroid and all states in the cluster
+            cluster_indices = np.where(self.cluster_labels == i)[0]  # Get state indices in this cluster
+            cluster_states = states_array[cluster_indices]
+            cluster_rewards_raw = softmax(self.rewards[cluster_indices])
+
+            if len(cluster_states) > 0:
+                dist = np.sum(np.square(cluster_states - centroid), axis=1)  # Squared Euclidean distance
+                weights = np.exp(-dist / gaussian_width)  # Apply Gaussian weighting
+
+                # Weighted sum of rewards
+                weighted_rewards = np.sum(weights * cluster_rewards_raw)
+                total_weight = np.sum(weights)  # Normalization factor
+
+                cluster_rewards[i] = weighted_rewards / total_weight if total_weight > 0 else 0
+                cluster_weights[i] = total_weight  # Keep track of the total weight for debugging
+
+        # Store the computed cluster rewards
+        self.rewards = cluster_rewards

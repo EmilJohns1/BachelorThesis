@@ -4,14 +4,23 @@ from agent import Agent
 import pygame
 import numpy as np
 import time
-from util import plot_rewards
+from util import plot_rewards, write_to_json
+
+#################################################
+# These variables should be logged for each run
+environment = "CartPole-v1"
+discount_factor = 1
+training_time = 100
+testing_time = 20
+training_rewards = []
+testing_rewards = []
+#################################################
 
 episode_rewards = []
-
 render_mode = None  # Set to None to run without graphics
 
-env_manager = EnvironmentManager(render_mode=render_mode)
-model = Model(action_space_n=env_manager.env.action_space.n, _discount_factor=1, _observation_space=env_manager.env.observation_space)
+env_manager = EnvironmentManager(render_mode=render_mode, environment=environment)
+model = Model(action_space_n=env_manager.env.action_space.n, _discount_factor=discount_factor, _observation_space=env_manager.env.observation_space)
 agent = Agent(model)
 
 rewards = 0.
@@ -22,7 +31,7 @@ states.append(state)
 
 episodes = 0
 training_time = 100
-testing_time = 50
+testing_time = 20
 finished_training = False
 start = time.time()
 while True:
@@ -52,11 +61,12 @@ while True:
             print("Time :{}".format(end-start))
             env_manager = EnvironmentManager(render_mode="human")
             
-            model.run_k_means(k=1000)
+            model.run_k_means(k=2000)
             model.update_transitions_and_rewards_for_clusters()
 
             agent.use_clusters = True
             plot_rewards(episode_rewards=episode_rewards)
+            training_rewards = episode_rewards
             episode_rewards = []
             episodes = -1
             finished_training = True
@@ -65,7 +75,22 @@ while True:
             model.update_model(states, actions, rewards)
 
         if episodes == testing_time and finished_training:
+            testing_rewards = episode_rewards
+
+            
+            data = {
+                "environment" : environment,
+                "discount_factor" : discount_factor,
+                "training_time" : training_time,
+                "testing_time" : testing_time,
+                "training_rewards" : training_rewards,
+                "testing_rewards" : testing_rewards
+            }
+
+
             plot_rewards(episode_rewards=episode_rewards)
+            env_manager.close()
+            exit()
         
         rewards = 0.
         actions.clear()

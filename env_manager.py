@@ -4,8 +4,8 @@ import numpy as np
 import random
 
 class EnvironmentManager:
-    def __init__(self, render_mode):
-        self.env = gymnasium.make("CartPole-v1", render_mode=render_mode)
+    def __init__(self, render_mode, environment="CartPole-v1"):
+        self.env = gymnasium.make(environment, render_mode=render_mode)
         np.random.seed()
 
     def reset(self):
