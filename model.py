@@ -1,6 +1,8 @@
 import numpy as np
-from scipy.cluster.vq import vq, kmeans, whiten
+from scipy.cluster.vq import vq, whiten
 from scipy.cluster.vq import kmeans2
+from scipy.special import softmax
+from sklearn.cluster import k_means
 import matplotlib.pyplot as plt
 
 class Model:
@@ -41,42 +43,41 @@ class Model:
             self.states_std[i] = np.sqrt(self.M2[i]/n)
 
     def run_k_means(self, k):
+        gaussian_width = 0.2
         print("Running k-means...")
         
         states_array = np.array(self.states)
+        weights = softmax(self.rewards)
+
+        # Compute distances from mean state (or an alternative reference point)
+        mean_state = np.mean(states_array, axis=0)  # Could also use median or a specific state
+        dist = states_array - mean_state  # Compute distance from mean
+        squared_dist = np.sum(np.square(dist), axis=1)  # Squared Euclidean distance
+
+        # Apply Gaussian weighting function
+        gaussian_weights = np.exp(-squared_dist / gaussian_width)
         
-        centroids, labels = kmeans2(states_array, k, minit="points")
+        centroids, labels, inertia = k_means(X=states_array, n_clusters=k, sample_weight=gaussian_weights)
         
         self.clustered_states = centroids
         self.cluster_labels = labels
-
     
     def update_transitions_and_rewards_for_clusters(self):
+        # Map states to clusters
+        state_to_cluster = {i: self.cluster_labels[i] for i in range(len(self.states))}
         
-        # Initialize clustered transitions and rewards
-        num_clusters = len(self.clustered_states)
-        clustered_transitions = [[] for _ in range(len(self.state_action_transitions))]
-        clustered_rewards = [0.0 for _ in range(num_clusters)]
-        cluster_counts = [0 for _ in range(num_clusters)]
-
-        # Map original states and transitions to clusters
-        for action, transitions in enumerate(self.state_action_transitions):
-            for state_from, state_to in transitions:
-                cluster_from = self.cluster_labels[state_from]
-                cluster_to = self.cluster_labels[state_to]
-                clustered_transitions[action].append((cluster_from, cluster_to))
+        # Create new lists for clustered transitions
+        clustered_transitions_from = [[] for _ in self.actions]
+        clustered_transitions_to = [[] for _ in self.actions]
         
-        # Aggregate rewards for clusters
-        for i, cluster_label in enumerate(self.cluster_labels):
-            clustered_rewards[cluster_label] += self.rewards[i]
-            cluster_counts[cluster_label] += 1
+        for action in self.actions:
+            for from_state, to_state in zip(self.state_action_transitions_from[action], self.state_action_transitions_to[action]):
+                from_cluster = state_to_cluster[from_state]
+                to_cluster = state_to_cluster[to_state]
 
-        # Normalize rewards by the number of states in each cluster
-        for i in range(num_clusters):
-            if cluster_counts[i] > 0:
-                clustered_rewards[i] /= cluster_counts[i]
+                clustered_transitions_from[action].append(from_cluster)
+                clustered_transitions_to[action].append(to_cluster)
 
-        # Update the model with clustered transitions and rewards
-        self.state_action_transitions = clustered_transitions
-        self.rewards = clustered_rewards
-        
+        # Update model transitions
+        self.state_action_transitions_from = clustered_transitions_from
+        self.state_action_transitions_to = clustered_transitions_to

@@ -2,9 +2,9 @@ from env_manager import EnvironmentManager
 from model import Model
 from agent import Agent
 import pygame
-import matplotlib.pyplot as plt
 import numpy as np
 import time
+from util import plot_rewards
 
 episode_rewards = []
 
@@ -21,8 +21,10 @@ state, info = env_manager.reset()
 states.append(state)
 
 episodes = 0
-training_time = 200
-start =time.time()
+training_time = 100
+testing_time = 50
+finished_training = False
+start = time.time()
 while True:
     if render_mode == "human":
         for event in pygame.event.get():
@@ -44,37 +46,27 @@ while True:
 
         episode_rewards.append(rewards)
 
-        if episodes == training_time:
+        if episodes == training_time and not finished_training:
+            episodes = 0
             end = time.time()
             print("Time :{}".format(end-start))
             env_manager = EnvironmentManager(render_mode="human")
             
-            #model.run_k_means(k=1000)
-            #model.update_transitions_and_rewards_for_clusters()
+            model.run_k_means(k=100)
+            model.update_transitions_and_rewards_for_clusters()
 
             agent.use_clusters = True
-
-             # Calculate running mean and std
-            running_means = np.cumsum(episode_rewards) / np.arange(1, len(episode_rewards) + 1)
-            running_stds = [np.std(episode_rewards[:i + 1]) for i in range(len(episode_rewards))]
-            
-            # Plot rewards, mean, and standard deviation
-            plt.figure(figsize=(10, 6))
-            plt.plot(range(1, len(episode_rewards) + 1), episode_rewards, label="Rewards", alpha=0.5)
-            plt.plot(range(1, len(running_means) + 1), running_means, label="Running Mean", color="orange")
-            plt.fill_between(range(1, len(running_means) + 1),
-                             np.array(running_means) - np.array(running_stds),
-                             np.array(running_means) + np.array(running_stds),
-                             color="orange", alpha=0.3, label="Mean ± Std")
-            plt.xlabel("Episode")
-            plt.ylabel("Rewards")
-            plt.title("Episode Rewards with Running Mean and Std")
-            plt.legend()
-            plt.show()
-
+            plot_rewards(episode_rewards=episode_rewards)
+            episode_rewards = []
+            episodes = -1
+            finished_training = True
 
         elif episodes < training_time:
             model.update_model(states, actions, rewards)
+
+        if episodes == testing_time and finished_training:
+            plot_rewards(episode_rewards=episode_rewards)
+        
         rewards = 0.
         actions.clear()
         states.clear()
