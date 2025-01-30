@@ -23,6 +23,8 @@ class Agent:
     def compute_action_rewards(self, state, states_mean, states_std):
         action_rewards = [0. for _ in self.model.actions]
         action_weights = [0. for _ in self.model.actions]
+        
+        # Ensure transitions refer to valid cluster indices
         for action in self.model.actions:
             if len(self.model.state_action_transitions_from[action]) > 0:
                 dist = (state - states_mean) / states_std - (
@@ -30,12 +32,16 @@ class Agent:
                 ) / states_std
                 weight = np.exp(-np.sum(np.square(dist), axis=1) / self.gaussian_width)
                 action_weights[action] = np.sum(weight)
-                action_rewards[action] = np.sum(weight * self.model.rewards[self.model.state_action_transitions_to[action]]
-                                            ) / action_weights[action]
+                action_rewards[action] = np.sum(weight * self.model.rewards[
+                    np.array(self.model.state_action_transitions_to[action], dtype=int)  # Ensure it's an integer array
+                ]) / action_weights[action]
         return action_rewards, action_weights
+
 
     def get_action(self, action_rewards, action_weights):
         for action in self.model.actions:
+            if self.use_clusters:
+                return np.argmax(action_rewards)
             if action_weights[action] == 0:
                 return action  # Return action that has never been chosen before
             if action_weights[action] / np.max(action_weights) < self.exploration_rate:

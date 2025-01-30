@@ -52,7 +52,7 @@ while True:
             print("Time :{}".format(end-start))
             env_manager = EnvironmentManager(render_mode="human")
             
-            model.run_k_means(k=100)
+            model.run_k_means(k=500)
             model.update_transitions_and_rewards_for_clusters()
 
             agent.use_clusters = True
@@ -60,6 +60,7 @@ while True:
             episode_rewards = []
             episodes = -1
             finished_training = True
+            action_rewards, action_weights = agent.compute_action_rewards(state, states_mean, states_std)
 
         elif episodes < training_time:
             model.update_model(states, actions, rewards)
