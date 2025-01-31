@@ -2,16 +2,28 @@ from env_manager import EnvironmentManager
 from model import Model
 from agent import Agent
 import pygame
-import matplotlib.pyplot as plt
 import numpy as np
 import time
+from util import plot_rewards, write_to_json
+import random
+
+#################################################
+# These variables should be logged for each run
+environment = "CartPole-v1"
+discount_factor = 1
+training_time = 100
+testing_time = 100
+training_rewards = []
+testing_rewards = []
+k = 3000
+seed = random.randint(0, 2**32 - 1)
+#################################################
 
 episode_rewards = []
+render_mode = "human"  # Set to None to run without graphics
 
-render_mode = None  # Set to None to run without graphics
-
-env_manager = EnvironmentManager(render_mode=render_mode)
-model = Model(action_space_n=env_manager.env.action_space.n, _discount_factor=1, _observation_space=env_manager.env.observation_space)
+env_manager = EnvironmentManager(render_mode=render_mode, environment=environment, seed=seed)
+model = Model(action_space_n=env_manager.env.action_space.n, _discount_factor=discount_factor, _observation_space=env_manager.env.observation_space)
 agent = Agent(model)
 
 rewards = 0.
@@ -21,8 +33,8 @@ state, info = env_manager.reset()
 states.append(state)
 
 episodes = 0
-training_time = 200
-start =time.time()
+finished_training = False
+start = time.time()
 while True:
     if render_mode == "human":
         for event in pygame.event.get():
@@ -44,37 +56,45 @@ while True:
 
         episode_rewards.append(rewards)
 
-        if episodes == training_time:
+        if episodes == training_time and not finished_training:
+            episodes = 0
             end = time.time()
             print("Time :{}".format(end-start))
-            env_manager = EnvironmentManager(render_mode="human")
             
-            #model.run_k_means(k=1000)
-            #model.update_transitions_and_rewards_for_clusters()
+            model.run_k_means(k=k)
+            model.update_transitions_and_rewards_for_clusters()
 
             agent.use_clusters = True
+            plot_rewards(episode_rewards=episode_rewards)
+            training_rewards = episode_rewards
+            episode_rewards = []
+            episodes = -1
+            finished_training = True
 
-             # Calculate running mean and std
-            running_means = np.cumsum(episode_rewards) / np.arange(1, len(episode_rewards) + 1)
-            running_stds = [np.std(episode_rewards[:i + 1]) for i in range(len(episode_rewards))]
-            
-            # Plot rewards, mean, and standard deviation
-            plt.figure(figsize=(10, 6))
-            plt.plot(range(1, len(episode_rewards) + 1), episode_rewards, label="Rewards", alpha=0.5)
-            plt.plot(range(1, len(running_means) + 1), running_means, label="Running Mean", color="orange")
-            plt.fill_between(range(1, len(running_means) + 1),
-                             np.array(running_means) - np.array(running_stds),
-                             np.array(running_means) + np.array(running_stds),
-                             color="orange", alpha=0.3, label="Mean ± Std")
-            plt.xlabel("Episode")
-            plt.ylabel("Rewards")
-            plt.title("Episode Rewards with Running Mean and Std")
-            plt.legend()
-            plt.show()
-
-
-        elif episodes < training_time:
+        elif episodes < training_time and not finished_training:
             model.update_model(states, actions, rewards)
+
+        if episodes == testing_time and finished_training:
+            testing_rewards = episode_rewards
+
+            
+            data = {
+                "environment" : environment,
+                "discount_factor" : discount_factor,
+                "k" : k,
+                "seed" : seed,
+                "training_time" : training_time,
+                "testing_time" : testing_time,
+                "training_rewards" : training_rewards,
+                "testing_rewards" : testing_rewards
+            }
+            write_to_json(data)
+
+
+            plot_rewards(episode_rewards=episode_rewards)
+            env_manager.close()
+            exit()
+        
         rewards = 0.
         actions.clear()
         states.clear()

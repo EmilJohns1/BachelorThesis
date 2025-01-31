@@ -36,6 +36,8 @@ class Agent:
 
     def get_action(self, action_rewards, action_weights):
         for action in self.model.actions:
+            if self.use_clusters:
+                return np.argmax(action_rewards)
             if action_weights[action] == 0:
                 return action  # Return action that has never been chosen before
             if action_weights[action] / np.max(action_weights) < self.exploration_rate:
