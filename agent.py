@@ -20,7 +20,7 @@ class Agent:
                 states_std[i] = 1.
         return states_mean, states_std
 
-    def compute_action_rewards(self, state, states_mean, states_std):
+    def compute_action_rewards(self, state, states_mean, states_std):      
         action_rewards = [0. for _ in self.model.actions]
         action_weights = [0. for _ in self.model.actions]
         

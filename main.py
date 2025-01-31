@@ -21,7 +21,7 @@ state, info = env_manager.reset()
 states.append(state)
 
 episodes = 0
-training_time = 100
+training_time = 150
 testing_time = 50
 finished_training = False
 start = time.time()
@@ -52,7 +52,7 @@ while True:
             print("Time :{}".format(end-start))
             env_manager = EnvironmentManager(render_mode="human")
             
-            model.run_k_means(k=500)
+            model.run_k_means(k=2000)
             model.update_transitions_and_rewards_for_clusters()
 
             agent.use_clusters = True
