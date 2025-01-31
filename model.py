@@ -4,6 +4,7 @@ from scipy.cluster.vq import kmeans2
 from scipy.special import softmax
 from sklearn.cluster import k_means
 import matplotlib.pyplot as plt
+from collections import defaultdict
 
 class Model:
     def __init__(self, action_space_n, _discount_factor, _observation_space):
@@ -40,49 +41,67 @@ class Model:
         self.M2 += delta * (new_state - self.states_mean)  # Update variance accumulator
         self.states_std = np.sqrt(self.M2 / n)  # Compute standard deviation
 
+    def scale_rewards(self, new_min=0.01, new_max=100.0):
+        print("Scaling rewards...")
+        print(f"Rewards before scaling: {self.rewards}")  # Debug: Check the values of rewards
+        rewards = np.array(self.rewards)
+        min_reward = np.min(self.rewards)
+        max_reward = np.max(self.rewards)
+
+        if max_reward == min_reward:
+            print("Rewards have no variation, scaling skipped.")
+            return rewards
+
+        scaled_rewards = ((rewards - min_reward) / (max_reward - min_reward)) * (new_max - new_min) + new_min
+        return scaled_rewards
+
     def run_k_means(self, k):
-        gaussian_width = 0.3
         print("Running k-means...")
-        
+
         states_array = np.array(self.states)
-        reward_weights = softmax(self.rewards)
 
-        """ # Compute distances from mean state (or an alternative reference point)
-        mean_state = np.mean(states_array, axis=0)  # Could also use median or a specific state
-        dist = states_array - mean_state  # Compute distance from mean
-        squared_dist = np.sum(np.square(dist), axis=1)  # Squared Euclidean distance
+        shifted_rewards = self.scale_rewards()
 
-        # Apply Gaussian weighting function
-        gaussian_weights = np.exp(-squared_dist / gaussian_width)
-        sample_weight = reward_weights*gaussian_weights """
+        new_rewards = np.power(shifted_rewards, 3)
         
-        centroids, labels, inertia = k_means(X=states_array, n_clusters=k, sample_weight=reward_weights)
-        
+        print(f"New rewards: {new_rewards}")
+
+        centroids, labels, inertia = k_means(X=states_array, n_clusters=k, sample_weight=new_rewards)
+
         self.clustered_states = centroids
         self.cluster_labels = labels
     
     def update_transitions_and_rewards_for_clusters(self):
-        gaussian_width = 0.2
-        # Map states to clusters
         state_to_cluster = {i: self.cluster_labels[i] for i in range(len(self.states))}
-        
-        # Create new lists for clustered transitions
-        clustered_transitions_from = [[] for _ in self.actions]
-        clustered_transitions_to = [[] for _ in self.actions]
-        
+
+        transition_counts = defaultdict(lambda: defaultdict(int))
+
         for action in self.actions:
             for from_state, to_state in zip(self.state_action_transitions_from[action], self.state_action_transitions_to[action]):
                 from_cluster = state_to_cluster[from_state]
                 to_cluster = state_to_cluster[to_state]
 
+                transition_counts[(from_cluster, action)][to_cluster] += 1
+
+        
+        clustered_transitions_from = [[] for _ in self.actions]
+        clustered_transitions_to = [[] for _ in self.actions]
+        clustered_transition_probs = [{} for _ in self.actions]
+
+        for (from_cluster, action), to_clusters in transition_counts.items():
+            total_transitions = sum(to_clusters.values())
+            
+            for to_cluster, count in to_clusters.items():
                 clustered_transitions_from[action].append(from_cluster)
                 clustered_transitions_to[action].append(to_cluster)
+                clustered_transition_probs[action][(from_cluster, to_cluster)] = count / total_transitions
 
-        # Update model transitions
         self.state_action_transitions_from = clustered_transitions_from
         self.state_action_transitions_to = clustered_transitions_to
+        self.transition_probs = clustered_transition_probs
 
          # Initialize rewards for clusters
+        gaussian_width = 0.3
         num_clusters = len(self.clustered_states)
         cluster_rewards = np.zeros(num_clusters)
         cluster_weights = np.zeros(num_clusters)  # Sum of weights for normalization
@@ -109,3 +128,4 @@ class Model:
 
         # Store the computed cluster rewards
         self.rewards = cluster_rewards
+        print("Rewards length:{}\nStates length: {}".format(len(self.rewards), len(self.clustered_states)))

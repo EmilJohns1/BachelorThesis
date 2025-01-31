@@ -5,22 +5,24 @@ import pygame
 import numpy as np
 import time
 from util import plot_rewards, write_to_json
+import random
 
 #################################################
 # These variables should be logged for each run
 environment = "CartPole-v1"
 discount_factor = 1
-training_time = 160
-testing_time = 40
+training_time = 80
+testing_time = 20
 training_rewards = []
 testing_rewards = []
-k = 4000
+k = 3000
+seed = random.randint(0, 2**32 - 1)
 #################################################
 
 episode_rewards = []
 render_mode = None  # Set to None to run without graphics
 
-env_manager = EnvironmentManager(render_mode=render_mode, environment=environment)
+env_manager = EnvironmentManager(render_mode=render_mode, environment=environment, seed=seed)
 model = Model(action_space_n=env_manager.env.action_space.n, _discount_factor=discount_factor, _observation_space=env_manager.env.observation_space)
 agent = Agent(model)
 
@@ -58,7 +60,6 @@ while True:
             episodes = 0
             end = time.time()
             print("Time :{}".format(end-start))
-            env_manager = EnvironmentManager(render_mode="human")
             
             model.run_k_means(k=k)
             model.update_transitions_and_rewards_for_clusters()
@@ -81,6 +82,7 @@ while True:
                 "environment" : environment,
                 "discount_factor" : discount_factor,
                 "k" : k,
+                "seed" : seed,
                 "training_time" : training_time,
                 "testing_time" : testing_time,
                 "training_rewards" : training_rewards,
