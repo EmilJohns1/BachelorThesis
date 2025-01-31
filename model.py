@@ -101,7 +101,7 @@ class Model:
         self.transition_probs = clustered_transition_probs
 
          # Initialize rewards for clusters
-        gaussian_width = 0.3
+        gaussian_width = 0.2
         num_clusters = len(self.clustered_states)
         cluster_rewards = np.zeros(num_clusters)
         cluster_weights = np.zeros(num_clusters)  # Sum of weights for normalization
@@ -113,7 +113,7 @@ class Model:
             # Compute distances between centroid and all states in the cluster
             cluster_indices = np.where(self.cluster_labels == i)[0]  # Get state indices in this cluster
             cluster_states = states_array[cluster_indices]
-            cluster_rewards_raw = softmax(self.rewards[cluster_indices])
+            cluster_rewards_raw = self.rewards[cluster_indices]
 
             if len(cluster_states) > 0:
                 dist = np.sum(np.square(cluster_states - centroid), axis=1)  # Squared Euclidean distance
@@ -128,4 +128,5 @@ class Model:
 
         # Store the computed cluster rewards
         self.rewards = cluster_rewards
+        self.states = self.clustered_states
         print("Rewards length:{}\nStates length: {}".format(len(self.rewards), len(self.clustered_states)))
