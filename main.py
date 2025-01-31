@@ -4,13 +4,15 @@ from agent import Agent
 import pygame
 import numpy as np
 import time
-from util import plot_rewards
+from util.reward_visualizer import plot_rewards
+from util.cluster_visualizer import ClusterVisualizer
 
 episode_rewards = []
 
-render_mode = None  # Set to None to run without graphics
+render_mode = None
 
-env_manager = EnvironmentManager(render_mode=render_mode)
+fixed_seed = 123 
+env_manager = EnvironmentManager(render_mode=render_mode, seed=fixed_seed)
 model = Model(action_space_n=env_manager.env.action_space.n, _discount_factor=1, _observation_space=env_manager.env.observation_space)
 agent = Agent(model)
 
@@ -21,7 +23,7 @@ state, info = env_manager.reset()
 states.append(state)
 
 episodes = 0
-training_time = 150
+training_time = 100
 testing_time = 50
 finished_training = False
 start = time.time()
@@ -50,10 +52,21 @@ while True:
             episodes = 0
             end = time.time()
             print("Time :{}".format(end-start))
-            env_manager = EnvironmentManager(render_mode="human")
+            env_manager = EnvironmentManager(render_mode="human", seed=fixed_seed)
             
-            model.run_k_means(k=2000)
+            model.run_k_means(k=3000)
             model.update_transitions_and_rewards_for_clusters()
+
+            print(f"States shape: {model.states.shape}")
+            print(f"Rewards shape: {model.rewards.shape}")
+
+            visualizer = ClusterVisualizer(model)
+
+            # Plot clusters
+            visualizer.plot_clusters()
+
+            # Plot rewards
+            visualizer.plot_rewards()
 
             agent.use_clusters = True
             plot_rewards(episode_rewards=episode_rewards)
@@ -62,7 +75,7 @@ while True:
             finished_training = True
             action_rewards, action_weights = agent.compute_action_rewards(state, states_mean, states_std)
 
-        elif episodes < training_time:
+        elif episodes < training_time and not finished_training:
             model.update_model(states, actions, rewards)
 
         if episodes == testing_time and finished_training:
