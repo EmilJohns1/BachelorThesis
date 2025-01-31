@@ -19,6 +19,7 @@ def plot_rewards(episode_rewards):
     plt.xlabel("Episode")
     plt.ylabel("Rewards")
     plt.title("Episode Rewards with Running Mean and Std")
+    plt.ylim(0, 500)
     plt.legend()
     plt.show()
 

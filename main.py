@@ -10,10 +10,11 @@ from util import plot_rewards, write_to_json
 # These variables should be logged for each run
 environment = "CartPole-v1"
 discount_factor = 1
-training_time = 100
-testing_time = 20
+training_time = 160
+testing_time = 40
 training_rewards = []
 testing_rewards = []
+k = 4000
 #################################################
 
 episode_rewards = []
@@ -30,8 +31,6 @@ state, info = env_manager.reset()
 states.append(state)
 
 episodes = 0
-training_time = 100
-testing_time = 20
 finished_training = False
 start = time.time()
 while True:
@@ -61,7 +60,7 @@ while True:
             print("Time :{}".format(end-start))
             env_manager = EnvironmentManager(render_mode="human")
             
-            model.run_k_means(k=2000)
+            model.run_k_means(k=k)
             model.update_transitions_and_rewards_for_clusters()
 
             agent.use_clusters = True
@@ -81,11 +80,13 @@ while True:
             data = {
                 "environment" : environment,
                 "discount_factor" : discount_factor,
+                "k" : k,
                 "training_time" : training_time,
                 "testing_time" : testing_time,
                 "training_rewards" : training_rewards,
                 "testing_rewards" : testing_rewards
             }
+            write_to_json(data)
 
 
             plot_rewards(episode_rewards=episode_rewards)

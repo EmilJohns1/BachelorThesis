@@ -7,7 +7,8 @@ import matplotlib.pyplot as plt
 
 class Model:
     def __init__(self, action_space_n, _discount_factor, _observation_space):
-        self.states: np.ndarray = np.empty((0, _observation_space.shape[0]))  # States are stored here
+        obs_dim = _observation_space.shape[0]
+        self.states: np.ndarray = np.empty((0, obs_dim))  # States are stored here
         self.rewards: np.ndarray = np.empty(0)  # Value for each state index
 
         self.actions: list[int] = list(range(action_space_n))
@@ -17,9 +18,9 @@ class Model:
         self.state_action_transitions_to: list[list[int]] = [[] for _ in self.actions]
 
         self.discount_factor: float = _discount_factor # Low discount factor penalizes longer episodes
-        self.states_mean = np.array([0., 0., 0., 0.]) 
-        self.M2 = np.array([0., 0., 0., 0.])
-        self.states_std = np.array([1., 1., 1., 1.])
+        self.states_mean = np.zeros(obs_dim)
+        self.M2 = np.zeros(obs_dim)
+        self.states_std = np.ones(obs_dim)
 
     def update_model(self, states, actions, rewards):
         for i, state in enumerate(states):
@@ -33,14 +34,11 @@ class Model:
         self.states = np.vstack((self.states, new_state))
         n = len(self.states)
 
-        for i in range(4):
-            delta = new_state[i] - self.states_mean[i]
+        delta = new_state - self.states_mean  # Element-wise difference
+        self.states_mean += delta / n  # Update mean
 
-            self.states_mean[i] += delta/n
-
-            self.M2[i] += delta*(new_state[i] - self.states_mean[i])
-
-            self.states_std[i] = np.sqrt(self.M2[i]/n)
+        self.M2 += delta * (new_state - self.states_mean)  # Update variance accumulator
+        self.states_std = np.sqrt(self.M2 / n)  # Compute standard deviation
 
     def run_k_means(self, k):
         gaussian_width = 0.3
@@ -49,14 +47,14 @@ class Model:
         states_array = np.array(self.states)
         reward_weights = softmax(self.rewards)
 
-        # Compute distances from mean state (or an alternative reference point)
+        """ # Compute distances from mean state (or an alternative reference point)
         mean_state = np.mean(states_array, axis=0)  # Could also use median or a specific state
         dist = states_array - mean_state  # Compute distance from mean
         squared_dist = np.sum(np.square(dist), axis=1)  # Squared Euclidean distance
 
         # Apply Gaussian weighting function
         gaussian_weights = np.exp(-squared_dist / gaussian_width)
-        sample_weight = reward_weights*gaussian_weights
+        sample_weight = reward_weights*gaussian_weights """
         
         centroids, labels, inertia = k_means(X=states_array, n_clusters=k, sample_weight=reward_weights)
         
@@ -64,7 +62,7 @@ class Model:
         self.cluster_labels = labels
     
     def update_transitions_and_rewards_for_clusters(self):
-        gaussian_width = 0.15
+        gaussian_width = 0.2
         # Map states to clusters
         state_to_cluster = {i: self.cluster_labels[i] for i in range(len(self.states))}
         
