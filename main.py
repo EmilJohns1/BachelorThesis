@@ -14,7 +14,8 @@ training_time = 160
 testing_time = 40
 training_rewards = []
 testing_rewards = []
-k = 4000
+k = 5000
+
 #################################################
 
 episode_rewards = []
@@ -50,7 +51,7 @@ while True:
     rewards += float(reward)
 
     if terminated or truncated:
-        print(f"rewards: {rewards}")
+        print(f"Episode {episodes + 1}: rewards: {rewards}")
 
         episode_rewards.append(rewards)
 
