@@ -71,7 +71,7 @@ class Model:
         self.clustered_states = centroids
         self.cluster_labels = labels
     
-    def update_transitions_and_rewards_for_clusters(self):
+    def update_transitions_and_rewards_for_clusters(self, gaussian_width=0.2):
         state_to_cluster = {i: self.cluster_labels[i] for i in range(len(self.states))}
 
         transition_counts = defaultdict(lambda: defaultdict(int))
@@ -101,7 +101,6 @@ class Model:
         self.transition_probs = clustered_transition_probs
 
          # Initialize rewards for clusters
-        gaussian_width = 0.2
         num_clusters = len(self.clustered_states)
         cluster_rewards = np.zeros(num_clusters)
         cluster_weights = np.zeros(num_clusters)  # Sum of weights for normalization
@@ -129,4 +128,6 @@ class Model:
         # Store the computed cluster rewards
         self.rewards = cluster_rewards
         self.states = self.clustered_states
+        self.states_mean = np.mean(self.states, axis=0)
+        self.states_std = np.std(self.states, axis=0)
         print("Rewards length:{}\nStates length: {}".format(len(self.rewards), len(self.clustered_states)))

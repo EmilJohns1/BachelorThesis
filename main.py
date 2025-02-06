@@ -10,17 +10,19 @@ import random
 #################################################
 # These variables should be logged for each run
 environment = "CartPole-v1"
-discount_factor = 1
-training_time = 100
-testing_time = 100
+discount_factor = 0.5
+k = 11000
+gaussian_width_rewards = 0.2
+seed = random.randint(0, 2**32 - 1)
+comments = ""
+training_time = 300
+testing_time = 300
 training_rewards = []
 testing_rewards = []
-k = 3000
-seed = random.randint(0, 2**32 - 1)
 #################################################
 
 episode_rewards = []
-render_mode = "human"  # Set to None to run without graphics
+render_mode = None  # Set to None to run without graphics
 
 env_manager = EnvironmentManager(render_mode=render_mode, environment=environment, seed=seed)
 model = Model(action_space_n=env_manager.env.action_space.n, _discount_factor=discount_factor, _observation_space=env_manager.env.observation_space)
@@ -62,7 +64,7 @@ while True:
             print("Time :{}".format(end-start))
             
             model.run_k_means(k=k)
-            model.update_transitions_and_rewards_for_clusters()
+            model.update_transitions_and_rewards_for_clusters(gaussian_width=gaussian_width_rewards)
 
             agent.use_clusters = True
             plot_rewards(episode_rewards=episode_rewards)
@@ -82,7 +84,9 @@ while True:
                 "environment" : environment,
                 "discount_factor" : discount_factor,
                 "k" : k,
+                "gaussian_width_rewards" : gaussian_width_rewards,
                 "seed" : seed,
+                "comments" : comments,
                 "training_time" : training_time,
                 "testing_time" : testing_time,
                 "training_rewards" : training_rewards,
