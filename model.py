@@ -1,7 +1,7 @@
 import numpy as np
 from scipy.cluster.vq import vq, whiten
 from scipy.cluster.vq import kmeans2
-from scipy.special import softmax
+from scipy.special import softmax, log_softmax
 from sklearn.cluster import k_means
 import matplotlib.pyplot as plt
 from collections import defaultdict
@@ -60,11 +60,26 @@ class Model:
 
         states_array = np.array(self.states)
 
-        shifted_rewards = self.scale_rewards()
+        log_softmax_rewards = log_softmax(self.rewards)
 
-        new_rewards = np.power(shifted_rewards, 3)
-        
-        print(f"New rewards: {new_rewards}")
+        # Normalize to bring values closer together
+        min_log = np.min(log_softmax_rewards)
+        max_log = np.max(log_softmax_rewards)
+
+        # Ensure range is manageable before exponentiation
+        if max_log - min_log > 0:
+            normalized_log_softmax = (log_softmax_rewards - min_log) / (max_log - min_log)  # Normalize to [0,1]
+        else:
+            normalized_log_softmax = np.zeros_like(log_softmax_rewards)  # If all values are the same
+
+        # Scale and exponentiate
+        scale_factor = 40
+        new_rewards = np.exp(normalized_log_softmax * scale_factor)
+
+        print(new_rewards)
+        if np.any(new_rewards == 0):
+            print("Warning: Zero values detected in new_rewards!")
+            print("Indices with zero values:", np.where(new_rewards == 0))
 
         centroids, labels, inertia = k_means(X=states_array, n_clusters=k, sample_weight=new_rewards)
 
@@ -130,4 +145,3 @@ class Model:
         self.states = self.clustered_states
         self.states_mean = np.mean(self.states, axis=0)
         self.states_std = np.std(self.states, axis=0)
-        print("Rewards length:{}\nStates length: {}".format(len(self.rewards), len(self.clustered_states)))
