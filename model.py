@@ -62,7 +62,7 @@ class Model:
         log_softmax_rewards = log_softmax(self.rewards)
         print(log_softmax_rewards)
 
-        scaled_rewards = self.scale_rewards(log_softmaxed_rewards=log_softmax_rewards, new_min=-5, new_max=5)
+        scaled_rewards = self.scale_rewards(log_softmaxed_rewards=log_softmax_rewards, new_min=-40, new_max=15)
         print(scaled_rewards)
 
         new_rewards = np.exp(scaled_rewards)
