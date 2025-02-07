@@ -73,6 +73,5 @@ def plot_multiple_runs(folder_name, title, field, block=True):
     plt.ylim(0, 500)
     plt.legend()
     plt.show(block=block)
-""" plot_multiple_runs(folder_name="softmax_300ep_factor40", title="Softmax 300 episodes Scale factor 40", field="training_rewards", block=False)
-plot_multiple_runs(folder_name="softmax_300ep_factor40", title="Softmax 300 episodes Scale factor 40", field="testing_rewards") """
-
+plot_multiple_runs(folder_name="logsoftmax_-5_5", title="Logsoftmax", field="testing_rewards")
+plot_multiple_runs(folder_name="scaled_rewards", title="Scaled rewards 300 episodes", field="testing_rewards")

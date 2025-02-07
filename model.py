@@ -41,12 +41,11 @@ class Model:
         self.M2 += delta * (new_state - self.states_mean)  # Update variance accumulator
         self.states_std = np.sqrt(self.M2 / n)  # Compute standard deviation
 
-    def scale_rewards(self, new_min=0.01, new_max=100.0):
+    def scale_rewards(self, log_softmaxed_rewards, new_min=0.01, new_max=100.0):
         print("Scaling rewards...")
-        print(f"Rewards before scaling: {self.rewards}")  # Debug: Check the values of rewards
-        rewards = np.array(self.rewards)
-        min_reward = np.min(self.rewards)
-        max_reward = np.max(self.rewards)
+        rewards = np.array(log_softmaxed_rewards)
+        min_reward = np.min(log_softmaxed_rewards)
+        max_reward = np.max(log_softmaxed_rewards)
 
         if max_reward == min_reward:
             print("Rewards have no variation, scaling skipped.")
@@ -61,20 +60,12 @@ class Model:
         states_array = np.array(self.states)
 
         log_softmax_rewards = log_softmax(self.rewards)
+        print(log_softmax_rewards)
 
-        # Normalize to bring values closer together
-        min_log = np.min(log_softmax_rewards)
-        max_log = np.max(log_softmax_rewards)
+        scaled_rewards = self.scale_rewards(log_softmaxed_rewards=log_softmax_rewards, new_min=-5, new_max=5)
+        print(scaled_rewards)
 
-        # Ensure range is manageable before exponentiation
-        if max_log - min_log > 0:
-            normalized_log_softmax = (log_softmax_rewards - min_log) / (max_log - min_log)  # Normalize to [0,1]
-        else:
-            normalized_log_softmax = np.zeros_like(log_softmax_rewards)  # If all values are the same
-
-        # Scale and exponentiate
-        scale_factor = 40
-        new_rewards = np.exp(normalized_log_softmax * scale_factor)
+        new_rewards = np.exp(scaled_rewards)
 
         print(new_rewards)
         if np.any(new_rewards == 0):
