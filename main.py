@@ -4,14 +4,15 @@ from agent import Agent
 import pygame
 import numpy as np
 import time
-from util.reward_visualizer import plot_rewards, write_to_json
+from util.reward_visualizer import plot_rewards
+from util.logger import write_to_json
 import random
 
 #################################################
 # These variables should be logged for each run
 environment = "CartPole-v1"
 discount_factor = 1
-training_time = 150
+training_time = 100
 testing_time = 100
 training_rewards = []
 testing_rewards = []
@@ -68,14 +69,6 @@ while True:
             print(f"States shape: {model.states.shape}")
             print(f"Rewards shape: {model.rewards.shape}")
 
-            visualizer = ClusterVisualizer(model)
-
-            # Plot clusters
-            visualizer.plot_clusters()
-
-            # Plot rewards
-            visualizer.plot_rewards()
-
             agent.use_clusters = True
             plot_rewards(episode_rewards=episode_rewards)
             training_rewards = episode_rewards
@@ -83,6 +76,14 @@ while True:
             episodes = -1
             finished_training = True
             action_rewards, action_weights = agent.compute_action_rewards(state, states_mean, states_std)
+            
+            visualizer = ClusterVisualizer(model)
+
+            # Plot clusters
+            visualizer.plot_clusters()
+
+            # Plot rewards
+            visualizer.plot_rewards()
 
         elif episodes < training_time and not finished_training and not finished_training:
             model.update_model(states, actions, rewards)

@@ -10,6 +10,7 @@ class Model:
     def __init__(self, action_space_n, _discount_factor, _observation_space):
         obs_dim = _observation_space.shape[0]
         self.states: np.ndarray = np.empty((0, obs_dim))  # States are stored here
+        self.original_states: np.ndarray = np.empty((0, obs_dim))  # States are stored here
         self.rewards: np.ndarray = np.empty(0)  # Value for each state index
         self.reward_weights = np.ones(0)
 
@@ -58,6 +59,8 @@ class Model:
 
     def run_k_means(self, k):
         print("Running k-means...")
+        
+        self.original_states = self.states
 
         states_array = np.array(self.states)
 

@@ -1,73 +1,69 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.manifold import TSNE
+from mpl_toolkits.mplot3d import Axes3D
+from matplotlib import colormaps
+from sklearn.cluster import AgglomerativeClustering
 
 class ClusterVisualizer:
     def __init__(self, model):
-        """
-        Initializes the visualizer with the trained model.
-        
-        :param model: The trained model containing clustered states and rewards.
-        """
         self.model = model
-
-    def plot_clusters(self, save_path=None):
-        """
-        Visualizes clusters using t-SNE.
-        
-        :param save_path: If provided, saves the plot instead of displaying it.
-        """
-        if len(self.model.states) == 0:
-            print("No states available for visualization.")
-            return
-
-        tsne = TSNE(n_components=2, random_state=42)
-        states_2d = tsne.fit_transform(self.model.states)
-
-        labels = np.array([self.model.cluster_labels[i] for i in range(len(self.model.states))])
-
-        plt.figure(figsize=(8, 6))
-        scatter = plt.scatter(states_2d[:, 0], states_2d[:, 1], c=labels, cmap="tab10", alpha=0.7)
-        plt.colorbar(scatter, label="Cluster ID")
-        plt.title("t-SNE Visualization of State Clusters")
-        plt.xlabel("t-SNE Component 1")
-        plt.ylabel("t-SNE Component 2")
-
-        if save_path:
-            plt.savefig(save_path)
+    
+    def plot_clusters(self):
+        if self.model.original_states.shape[1] > 2:
+            tsne = TSNE(n_components=2, random_state=42)
+            states_2d = tsne.fit_transform(self.model.original_states)
         else:
-            plt.show()
+            states_2d = self.model.original_states
 
-    def plot_rewards(self, save_path=None):
-        """
-        Visualizes rewards using t-SNE, where color represents reward magnitude.
-        
-        :param save_path: If provided, saves the plot instead of displaying it.
-        """
-        if len(self.model.states) == 0:
-            print("No states available for visualization.")
-            return
+        fig, ax = plt.subplots(figsize=(10, 8))
 
-        tsne = TSNE(n_components=2, random_state=42)
-        states_2d = tsne.fit_transform(self.model.states)
+        num_groups = 15
+        agglomerative = AgglomerativeClustering(n_clusters=num_groups, metric='euclidean', linkage='ward')
+        centroids = self.model.clustered_states
+        group_labels = agglomerative.fit_predict(centroids)
 
-        print(f"States_2D shape: {states_2d.shape}")
+        colormap = plt.cm.get_cmap('magma_r', num_groups)
+        colors = [colormap(label) for label in group_labels]
 
-        # Normalize rewards for better visualization
-        rewards = np.array(self.model.rewards).flatten()
+        label_to_color = {}
+        for i, label in enumerate(self.model.cluster_labels):
+            group = group_labels[label]
+            label_to_color[label] = colors[group]
 
-        rewards_normalized = (rewards - np.min(rewards)) / (np.max(rewards) - np.min(rewards) + 1e-5)
-        rewards_normalized = rewards_normalized[:states_2d.shape[0]]
+        scatter = ax.scatter(states_2d[:, 0], states_2d[:, 1], c=[label_to_color[label] for label in self.model.cluster_labels], s=25, alpha=0.8)
 
-        plt.figure(figsize=(8, 6))
-        scatter = plt.scatter(states_2d[:, 0], states_2d[:, 1], 
-                            c=rewards_normalized, cmap="plasma", alpha=0.7)
-        plt.colorbar(scatter, label="Normalized Reward")
-        plt.title("t-SNE Visualization of Rewards")
-        plt.xlabel("t-SNE Component 1")
-        plt.ylabel("t-SNE Component 2")
+        cbar = plt.colorbar(scatter)
+        cbar.set_label('Cluster Group')
 
-        if save_path:
-            plt.savefig(save_path)
-        else:
-            plt.show()
+        ax.set_xlabel('TSNE Component 1')
+        ax.set_ylabel('TSNE Component 2')
+        ax.set_title('2D Visualization of States and Clusters (Grouped by Proximity)')
+
+        plt.show()
+
+    
+    def plot_rewards(self):
+      if self.model.states.shape[1] < 2:
+          print("Insufficient dimensions to plot rewards.")
+          return
+
+      tsne = TSNE(n_components=3, random_state=42)
+      reduced_states = tsne.fit_transform(self.model.states)
+      rewards = np.array(self.model.rewards)
+
+      fig = plt.figure(figsize=(10, 7))
+      ax = fig.add_subplot(111, projection='3d')
+
+      scatter = ax.scatter(
+          reduced_states[:, 0], reduced_states[:, 1], reduced_states[:, 2],
+          c=rewards, cmap='coolwarm', alpha=0.8, s=10
+      )
+
+      ax.set_xlabel("TSNE Feature 1")
+      ax.set_ylabel("TSNE Feature 2")
+      ax.set_zlabel("TSNE Feature 3")
+      ax.set_title("3D Rewards Visualization using TSNE")
+      fig.colorbar(scatter, label="Reward Value")
+
+      plt.show()
