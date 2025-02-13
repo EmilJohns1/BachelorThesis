@@ -11,7 +11,7 @@ import random
 # These variables should be logged for each run
 environment = "CartPole-v1"
 discount_factor = 1
-training_time = 100
+training_time = 150
 testing_time = 100
 training_rewards = []
 testing_rewards = []
@@ -21,7 +21,7 @@ seed = random.randint(0, 2**32 - 1)
 from util.cluster_visualizer import ClusterVisualizer
 
 episode_rewards = []
-render_mode = "human"  # Set to None to run without graphics
+render_mode = None  # Set to None to run without graphics
 
 env_manager = EnvironmentManager(render_mode=render_mode, environment=environment, seed=seed)
 model = Model(action_space_n=env_manager.env.action_space.n, _discount_factor=discount_factor, _observation_space=env_manager.env.observation_space)
