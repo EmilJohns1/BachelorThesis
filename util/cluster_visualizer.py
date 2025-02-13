@@ -23,7 +23,7 @@ class ClusterVisualizer:
         centroids = self.model.clustered_states
         group_labels = agglomerative.fit_predict(centroids)
 
-        colormap = plt.cm.get_cmap('magma_r', num_groups)
+        colormap = plt.cm.get_cmap('rainbow_r', num_groups)
         colors = [colormap(label) for label in group_labels]
 
         label_to_color = {}
