@@ -1,5 +1,7 @@
-import json
 from datetime import datetime
+
+import json
+
 
 def write_to_json(data):
     timestamp = datetime.now().strftime("%Y_%m_%d_%H-%M-%S")
