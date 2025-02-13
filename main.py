@@ -6,7 +6,7 @@ import numpy as np
 import time
 from util import plot_rewards, write_to_json
 import random
-for i in range(10):
+for i in range(20):
     #################################################
     # These variables should be logged for each run
     environment = "CartPole-v1"

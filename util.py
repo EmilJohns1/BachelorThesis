@@ -73,3 +73,4 @@ def plot_multiple_runs(folder_name, title, field, block=True):
     plt.ylim(0, 500)
     plt.legend()
     plt.show(block=block)
+#plot_multiple_runs(folder_name="log_softmax_50ep_-40_15", title="Plot", field="testing_rewards", block=True)

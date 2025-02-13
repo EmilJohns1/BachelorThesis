@@ -42,17 +42,19 @@ class Model:
         self.states_std = np.sqrt(self.M2 / n)  # Compute standard deviation
 
     def scale_rewards(self, log_softmaxed_rewards, new_min=0.01, new_max=100.0):
-        print("Scaling rewards...")
-        rewards = np.array(log_softmaxed_rewards)
-        min_reward = np.min(log_softmaxed_rewards)
-        max_reward = np.max(log_softmaxed_rewards)
+        print("Shifting rewards...")
 
-        if max_reward == min_reward:
-            print("Rewards have no variation, scaling skipped.")
+        rewards = np.array(log_softmaxed_rewards)
+        max_reward = np.max(rewards)
+
+        if np.all(rewards == max_reward):  
+            print("Rewards have no variation, shifting skipped.")
             return rewards
 
-        scaled_rewards = ((rewards - min_reward) / (max_reward - min_reward)) * (new_max - new_min) + new_min
-        return scaled_rewards
+        # Shift so that the maximum value is new_max while keeping differences
+        shifted_rewards = rewards + (new_max - max_reward)
+
+        return shifted_rewards
 
     def run_k_means(self, k):
         print("Running k-means...")
@@ -68,6 +70,7 @@ class Model:
         new_rewards = np.exp(scaled_rewards)
 
         print(new_rewards)
+        
         if np.any(new_rewards == 0):
             print("Warning: Zero values detected in new_rewards!")
             print("Indices with zero values:", np.where(new_rewards == 0))
