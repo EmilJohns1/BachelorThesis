@@ -4,7 +4,8 @@ from agent import Agent
 import pygame
 import numpy as np
 import time
-from util import plot_rewards, write_to_json
+from util.reward_visualizer import plot_rewards
+from util.logger import write_to_json
 import random
 
 #################################################
@@ -18,9 +19,10 @@ testing_rewards = []
 k = 3000
 seed = random.randint(0, 2**32 - 1)
 #################################################
+from util.cluster_visualizer import ClusterVisualizer
 
 episode_rewards = []
-render_mode = "human"  # Set to None to run without graphics
+render_mode = None  # Set to None to run without graphics
 
 env_manager = EnvironmentManager(render_mode=render_mode, environment=environment, seed=seed)
 model = Model(action_space_n=env_manager.env.action_space.n, _discount_factor=discount_factor, _observation_space=env_manager.env.observation_space)
@@ -64,14 +66,26 @@ while True:
             model.run_k_means(k=k)
             model.update_transitions_and_rewards_for_clusters()
 
+            print(f"States shape: {model.states.shape}")
+            print(f"Rewards shape: {model.rewards.shape}")
+
             agent.use_clusters = True
             plot_rewards(episode_rewards=episode_rewards)
             training_rewards = episode_rewards
             episode_rewards = []
             episodes = -1
             finished_training = True
+            action_rewards, action_weights = agent.compute_action_rewards(state, states_mean, states_std)
+            
+            visualizer = ClusterVisualizer(model)
 
-        elif episodes < training_time and not finished_training:
+            # Plot clusters
+            visualizer.plot_clusters()
+
+            # Plot rewards
+            visualizer.plot_rewards()
+
+        elif episodes < training_time and not finished_training and not finished_training:
             model.update_model(states, actions, rewards)
 
         if episodes == testing_time and finished_training:

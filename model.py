@@ -10,7 +10,9 @@ class Model:
     def __init__(self, action_space_n, _discount_factor, _observation_space):
         obs_dim = _observation_space.shape[0]
         self.states: np.ndarray = np.empty((0, obs_dim))  # States are stored here
+        self.original_states: np.ndarray = np.empty((0, obs_dim))  # States are stored here
         self.rewards: np.ndarray = np.empty(0)  # Value for each state index
+        self.reward_weights = np.ones(0)
 
         self.actions: list[int] = list(range(action_space_n))
         # Lists for each action containing from and to state indices, i.e.
@@ -57,6 +59,8 @@ class Model:
 
     def run_k_means(self, k):
         print("Running k-means...")
+        
+        self.original_states = self.states
 
         states_array = np.array(self.states)
 
@@ -70,6 +74,7 @@ class Model:
 
         self.clustered_states = centroids
         self.cluster_labels = labels
+
     
     def update_transitions_and_rewards_for_clusters(self):
         state_to_cluster = {i: self.cluster_labels[i] for i in range(len(self.states))}
