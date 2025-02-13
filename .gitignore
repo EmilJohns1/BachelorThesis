@@ -1,4 +1,6 @@
 /__pycache__
+*.__pycache__
+*.pyc
 /.venv
 IDATT2900.code-workspace
 *.json
