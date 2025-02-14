@@ -77,6 +77,7 @@ for i in range(20):
 
                 agent.use_clusters = True
                 #plot_rewards(episode_rewards=episode_rewards)
+
                 training_rewards = episode_rewards
                 episode_rewards = []
                 episodes = -1
@@ -107,10 +108,11 @@ for i in range(20):
                 #plot_rewards(episode_rewards=episode_rewards)
                 env_manager.close()
                 break
-            
+                
             rewards = 0.
             actions.clear()
             states.clear()
             state, info = env_manager.reset()
             states.append(state)
+
             episodes += 1
