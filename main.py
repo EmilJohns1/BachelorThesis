@@ -7,6 +7,7 @@ from model import Model
 
 import numpy as np
 
+from util.cluster_visualizer import ClusterVisualizer
 from util.logger import write_to_json
 from util.reward_visualizer import plot_rewards
 
@@ -19,15 +20,15 @@ testing_time = 100
 training_rewards = []
 testing_rewards = []
 k = 3000
-seed = random.randint(0, 2**32 - 1)
+training_seed = random.randint(0, 2**32 - 1)
+testing_seed = random.randint(0, 2**32 - 1)
 #################################################
-from util.cluster_visualizer import ClusterVisualizer
 
 episode_rewards = []
 render_mode = None  # Set to None to run without graphics
 
 env_manager = EnvironmentManager(
-    render_mode=render_mode, environment=environment, seed=seed
+    render_mode=render_mode, environment=environment, seed=training_seed
 )
 model = Model(
     action_space_n=env_manager.env.action_space.n,
@@ -91,13 +92,15 @@ while True:
                 state, states_mean, states_std
             )
 
-            visualizer = ClusterVisualizer(model)
+            env_manager = EnvironmentManager(
+                render_mode="human", environment=environment, seed=testing_seed
+            )
 
-            # Plot clusters
-            visualizer.plot_clusters()
+            # visualizer = ClusterVisualizer(model)
 
-            # Plot rewards
-            visualizer.plot_rewards()
+            # visualizer.plot_clusters()
+
+            # visualizer.plot_rewards()
 
         elif (
             episodes < training_time and not finished_training and not finished_training
@@ -111,7 +114,8 @@ while True:
                 "environment": environment,
                 "discount_factor": discount_factor,
                 "k": k,
-                "seed": seed,
+                "training_seed": training_seed,
+                "testing_seed": testing_seed,
                 "training_time": training_time,
                 "testing_time": testing_time,
                 "training_rewards": training_rewards,
