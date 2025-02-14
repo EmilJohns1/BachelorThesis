@@ -1,11 +1,14 @@
+import random
+import time
+import pygame
+from agent import Agent
 from env_manager import EnvironmentManager
 from model import Model
-from agent import Agent
-import pygame
+from util.cluster_visualizer import ClusterVisualizer
+from util.logger import write_to_json
+from util.reward_visualizer import plot_rewards
+
 import numpy as np
-import time
-from util import plot_rewards, write_to_json
-import random
 for i in range(20):
     #################################################
     # These variables should be logged for each run
@@ -24,11 +27,17 @@ for i in range(20):
     episode_rewards = []
     render_mode = None  # Set to None to run without graphics
 
-    env_manager = EnvironmentManager(render_mode=render_mode, environment=environment, seed=seed)
-    model = Model(action_space_n=env_manager.env.action_space.n, _discount_factor=discount_factor, _observation_space=env_manager.env.observation_space)
+    env_manager = EnvironmentManager(
+    render_mode=render_mode, environment=environment, seed=seed
+    )
+    model = Model(
+        action_space_n=env_manager.env.action_space.n,
+        _discount_factor=discount_factor,
+        _observation_space=env_manager.env.observation_space,
+    )
     agent = Agent(model)
 
-    rewards = 0.
+    rewards = 0.0
     actions = []
     states = []
     state, info = env_manager.reset()
