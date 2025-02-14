@@ -4,7 +4,6 @@ from scipy.cluster.vq import vq
 from scipy.cluster.vq import whiten
 from scipy.special import log_softmax
 
-
 import numpy as np
 
 import matplotlib.pyplot as plt
@@ -68,7 +67,7 @@ class Model:
         rewards = np.array(log_softmaxed_rewards)
         max_reward = np.max(rewards)
 
-        if np.all(rewards == max_reward):  
+        if np.all(rewards == max_reward):
             print("Rewards have no variation, shifting skipped.")
             return rewards
 
@@ -87,13 +86,15 @@ class Model:
         log_softmax_rewards = log_softmax(self.rewards)
         print(log_softmax_rewards)
 
-        scaled_rewards = self.scale_rewards(log_softmaxed_rewards=log_softmax_rewards, new_min=-40, new_max=15)
+        scaled_rewards = self.scale_rewards(
+            log_softmaxed_rewards=log_softmax_rewards, new_min=-40, new_max=15
+        )
         print(scaled_rewards)
 
         new_rewards = np.exp(scaled_rewards)
 
         print(new_rewards)
-        
+
         if np.any(new_rewards == 0):
             print("Warning: Zero values detected in new_rewards!")
             print("Indices with zero values:", np.where(new_rewards == 0))
@@ -104,7 +105,7 @@ class Model:
 
         self.clustered_states = centroids
         self.cluster_labels = labels
-    
+
     def update_transitions_and_rewards_for_clusters(self, gaussian_width=0.2):
         state_to_cluster = {i: self.cluster_labels[i] for i in range(len(self.states))}
 
@@ -138,7 +139,7 @@ class Model:
         self.state_action_transitions_to = clustered_transitions_to
         self.transition_probs = clustered_transition_probs
 
-         # Initialize rewards for clusters
+        # Initialize rewards for clusters
         num_clusters = len(self.clustered_states)
         cluster_rewards = np.zeros(num_clusters)
         cluster_weights = np.zeros(num_clusters)  # Sum of weights for normalization
