@@ -17,7 +17,7 @@ for i in range(20):
     discount_factor = 1
     k = 3000
     gaussian_width_rewards = 0.5
-    seed = random.randint(0, 2 ** 32 - 1)
+    seed = random.randint(0, 2**32 - 1)
     comments = ""
     training_time = 100
     testing_time = 100
