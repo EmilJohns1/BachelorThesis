@@ -2,7 +2,8 @@ from collections import defaultdict
 from scipy.cluster.vq import kmeans2
 from scipy.cluster.vq import vq
 from scipy.cluster.vq import whiten
-from scipy.special import softmax
+from scipy.special import log_softmax
+
 
 import numpy as np
 
@@ -61,23 +62,20 @@ class Model:
         self.M2 += delta * (new_state - self.states_mean)  # Update variance accumulator
         self.states_std = np.sqrt(self.M2 / n)  # Compute standard deviation
 
-    def scale_rewards(self, new_min=0.01, new_max=100.0):
-        print("Scaling rewards...")
-        print(
-            f"Rewards before scaling: {self.rewards}"
-        )  # Debug: Check the values of rewards
-        rewards = np.array(self.rewards)
-        min_reward = np.min(self.rewards)
-        max_reward = np.max(self.rewards)
+    def scale_rewards(self, log_softmaxed_rewards, new_min=0.01, new_max=100.0):
+        print("Shifting rewards...")
 
-        if max_reward == min_reward:
-            print("Rewards have no variation, scaling skipped.")
+        rewards = np.array(log_softmaxed_rewards)
+        max_reward = np.max(rewards)
+
+        if np.all(rewards == max_reward):  
+            print("Rewards have no variation, shifting skipped.")
             return rewards
 
-        scaled_rewards = ((rewards - min_reward) / (max_reward - min_reward)) * (
-            new_max - new_min
-        ) + new_min
-        return scaled_rewards
+        # Shift so that the maximum value is new_max while keeping differences
+        shifted_rewards = rewards + (new_max - max_reward)
+
+        return shifted_rewards
 
     def run_k_means(self, k):
         print("Running k-means...")
@@ -86,11 +84,19 @@ class Model:
 
         states_array = np.array(self.states)
 
-        shifted_rewards = self.scale_rewards()
+        log_softmax_rewards = log_softmax(self.rewards)
+        print(log_softmax_rewards)
 
-        new_rewards = np.power(shifted_rewards, 3)
+        scaled_rewards = self.scale_rewards(log_softmaxed_rewards=log_softmax_rewards, new_min=-40, new_max=15)
+        print(scaled_rewards)
 
-        print(f"New rewards: {new_rewards}")
+        new_rewards = np.exp(scaled_rewards)
+
+        print(new_rewards)
+        
+        if np.any(new_rewards == 0):
+            print("Warning: Zero values detected in new_rewards!")
+            print("Indices with zero values:", np.where(new_rewards == 0))
 
         centroids, labels, inertia = k_means(
             X=states_array, n_clusters=k, sample_weight=new_rewards
@@ -98,8 +104,8 @@ class Model:
 
         self.clustered_states = centroids
         self.cluster_labels = labels
-
-    def update_transitions_and_rewards_for_clusters(self):
+    
+    def update_transitions_and_rewards_for_clusters(self, gaussian_width=0.2):
         state_to_cluster = {i: self.cluster_labels[i] for i in range(len(self.states))}
 
         transition_counts = defaultdict(lambda: defaultdict(int))
@@ -132,8 +138,7 @@ class Model:
         self.state_action_transitions_to = clustered_transitions_to
         self.transition_probs = clustered_transition_probs
 
-        # Initialize rewards for clusters
-        gaussian_width = 0.2
+         # Initialize rewards for clusters
         num_clusters = len(self.clustered_states)
         cluster_rewards = np.zeros(num_clusters)
         cluster_weights = np.zeros(num_clusters)  # Sum of weights for normalization
@@ -169,8 +174,5 @@ class Model:
         # Store the computed cluster rewards
         self.rewards = cluster_rewards
         self.states = self.clustered_states
-        print(
-            "Rewards length:{}\nStates length: {}".format(
-                len(self.rewards), len(self.clustered_states)
-            )
-        )
+        self.states_mean = np.mean(self.states, axis=0)
+        self.states_std = np.std(self.states, axis=0)

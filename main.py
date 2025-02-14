@@ -9,7 +9,6 @@ from util.logger import write_to_json
 from util.reward_visualizer import plot_rewards
 
 import numpy as np
-
 for i in range(20):
     #################################################
     # These variables should be logged for each run
@@ -17,7 +16,7 @@ for i in range(20):
     discount_factor = 1
     k = 3000
     gaussian_width_rewards = 0.5
-    seed = random.randint(0, 2 ** 32 - 1)
+    seed = random.randint(0, 2**32 - 1)
     comments = ""
     training_time = 100
     testing_time = 100
@@ -29,7 +28,7 @@ for i in range(20):
     render_mode = None  # Set to None to run without graphics
 
     env_manager = EnvironmentManager(
-        render_mode=render_mode, environment=environment, seed=seed
+    render_mode=render_mode, environment=environment, seed=seed
     )
     model = Model(
         action_space_n=env_manager.env.action_space.n,
@@ -71,13 +70,14 @@ for i in range(20):
             if episodes == training_time and not finished_training:
                 episodes = 0
                 end = time.time()
-                print("Time :{}".format(end - start))
-
+                print("Time :{}".format(end-start))
+                
                 model.run_k_means(k=k)
                 model.update_transitions_and_rewards_for_clusters(gaussian_width=gaussian_width_rewards)
 
                 agent.use_clusters = True
-                # plot_rewards(episode_rewards=episode_rewards)
+                #plot_rewards(episode_rewards=episode_rewards)
+
                 training_rewards = episode_rewards
                 episode_rewards = []
                 episodes = -1
@@ -89,27 +89,30 @@ for i in range(20):
             if episodes == testing_time and finished_training:
                 testing_rewards = episode_rewards
 
+                
                 data = {
-                    "environment": environment,
-                    "discount_factor": discount_factor,
-                    "k": k,
-                    "gaussian_width_rewards": gaussian_width_rewards,
-                    "seed": seed,
-                    "comments": comments,
-                    "training_time": training_time,
-                    "testing_time": testing_time,
-                    "training_rewards": training_rewards,
-                    "testing_rewards": testing_rewards
+                    "environment" : environment,
+                    "discount_factor" : discount_factor,
+                    "k" : k,
+                    "gaussian_width_rewards" : gaussian_width_rewards,
+                    "seed" : seed,
+                    "comments" : comments,
+                    "training_time" : training_time,
+                    "testing_time" : testing_time,
+                    "training_rewards" : training_rewards,
+                    "testing_rewards" : testing_rewards
                 }
                 write_to_json(data)
 
-                # plot_rewards(episode_rewards=episode_rewards)
+
+                #plot_rewards(episode_rewards=episode_rewards)
                 env_manager.close()
                 break
-
+                
             rewards = 0.
             actions.clear()
             states.clear()
             state, info = env_manager.reset()
             states.append(state)
+
             episodes += 1
