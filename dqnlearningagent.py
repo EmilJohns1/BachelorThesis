@@ -60,7 +60,7 @@ class DQNAgent:
         epsilon_start=1.0,
         epsilon_end=0.01,
         epsilon_decay=5,
-        buffer_capacity=100,
+        buffer_capacity=10000,
         batch_size=64,
         target_update_freq=100
     ):
