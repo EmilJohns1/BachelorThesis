@@ -9,12 +9,12 @@ from util.logger import write_to_json
 from util.reward_visualizer import plot_rewards
 
 import numpy as np
-for i in range(20):
+for i in range(100):
     #################################################
     # These variables should be logged for each run
     environment = "CartPole-v1"
     discount_factor = 1
-    k = 3000
+    k = 4000
     gaussian_width_rewards = 0.5
     seed = random.randint(0, 2**32 - 1)
     comments = ""
@@ -32,8 +32,8 @@ for i in range(20):
     )
     model = Model(
         action_space_n=env_manager.env.action_space.n,
-        _discount_factor=discount_factor,
-        _observation_space=env_manager.env.observation_space,
+        discount_factor=discount_factor,
+        observation_space=env_manager.env.observation_space,
     )
     agent = Agent(model)
 
@@ -71,17 +71,16 @@ for i in range(20):
                 episodes = 0
                 end = time.time()
                 print("Time :{}".format(end-start))
-                
-                model.run_k_means(k=k)
-                model.update_transitions_and_rewards_for_clusters(gaussian_width=gaussian_width_rewards)
 
-                agent.use_clusters = True
-                #plot_rewards(episode_rewards=episode_rewards)
+                model.run_clustering(k=k, gaussian_width=gaussian_width_rewards)
+
+                # Disable for further training after clustering
+                agent.testing = True
+                finished_training = True
 
                 training_rewards = episode_rewards
                 episode_rewards = []
                 episodes = -1
-                finished_training = True
 
             elif episodes < training_time and not finished_training:
                 model.update_model(states, actions, rewards)
@@ -102,7 +101,7 @@ for i in range(20):
                     "training_rewards" : training_rewards,
                     "testing_rewards" : testing_rewards
                 }
-                write_to_json(data)
+                write_to_json(data, "regular_kmeans")
 
 
                 #plot_rewards(episode_rewards=episode_rewards)
