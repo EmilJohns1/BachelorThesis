@@ -13,8 +13,8 @@ from sklearn.cluster import k_means
 
 
 class Model:
-    def __init__(self, action_space_n, _discount_factor, _observation_space):
-        obs_dim = _observation_space.shape[0]
+    def __init__(self, action_space_n, discount_factor, observation_space):
+        obs_dim = observation_space.shape[0]
         self.states: np.ndarray = np.empty((0, obs_dim))  # States are stored here
         self.original_states: np.ndarray = np.empty(
             (0, obs_dim)
@@ -29,11 +29,13 @@ class Model:
         self.state_action_transitions_to: list[list[int]] = [[] for _ in self.actions]
 
         self.discount_factor: float = (
-            _discount_factor  # Low discount factor penalizes longer episodes
+            discount_factor  # Low discount factor penalizes longer episodes
         )
         self.states_mean = np.zeros(obs_dim)
         self.M2 = np.zeros(obs_dim)
         self.states_std = np.ones(obs_dim)
+
+        self.using_clusters = False
 
     def update_model(self, states, actions, rewards):
         for i, state in enumerate(states):
@@ -176,3 +178,8 @@ class Model:
         self.states = self.clustered_states
         self.states_mean = np.mean(self.states, axis=0)
         self.states_std = np.std(self.states, axis=0)
+
+    def cluster_states(self):
+        #Do clustering
+
+        self.using_clusters = True
