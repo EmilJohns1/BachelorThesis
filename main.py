@@ -103,7 +103,7 @@ for i in range(100):
                     "training_rewards" : training_rewards,
                     "testing_rewards" : testing_rewards
                 }
-                write_to_json(data, "all_states_reward_calc_gw02")
+                write_to_json(data, "")
 
 
                 #plot_rewards(episode_rewards=episode_rewards)

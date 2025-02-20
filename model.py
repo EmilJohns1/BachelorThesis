@@ -16,7 +16,7 @@ class Model:
     def __init__(self, action_space_n, discount_factor, observation_space, K, sigma):
         obs_dim = observation_space.shape[0]
         self.states: np.ndarray = np.empty((0, obs_dim))  # States are stored here
-        self.clusterer = Clusterer(K=K, D=obs_dim, sigma=sigma, lambda_=0.5, learning_rate=0.02)
+        self.clusterer = Clusterer(K=K, D=obs_dim, sigma=sigma, lambda_=0.5, learning_rate=0.02, action_space_n=action_space_n)
         self.original_states: np.ndarray = np.empty(
             (0, obs_dim)
         )  # States are stored here
