@@ -85,3 +85,5 @@ def plot_multiple_runs(folder_name, title, field, block=True):
     plt.ylim(0, 500)
     plt.legend()
     plt.show(block=block)
+
+plot_multiple_runs(folder_name="logs/all_states_reward_calc", title="Using all rewards", field="testing_rewards")

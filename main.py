@@ -15,7 +15,7 @@ for i in range(100):
     environment = "CartPole-v1"
     discount_factor = 1
     k = 4000
-    gaussian_width_rewards = 0.5
+    gaussian_width_rewards = 0.2
     seed = random.randint(0, 2**32 - 1)
     comments = ""
     training_time = 100
@@ -34,6 +34,8 @@ for i in range(100):
         action_space_n=env_manager.env.action_space.n,
         discount_factor=discount_factor,
         observation_space=env_manager.env.observation_space,
+        K=k,
+        sigma=gaussian_width_rewards
     )
     agent = Agent(model)
 
@@ -72,7 +74,7 @@ for i in range(100):
                 end = time.time()
                 print("Time :{}".format(end-start))
 
-                model.run_clustering(k=k, gaussian_width=gaussian_width_rewards)
+                model.cluster_states(k=k, gaussian_width=gaussian_width_rewards)
 
                 # Disable for further training after clustering
                 agent.testing = True
@@ -101,7 +103,7 @@ for i in range(100):
                     "training_rewards" : training_rewards,
                     "testing_rewards" : testing_rewards
                 }
-                write_to_json(data, "regular_kmeans")
+                write_to_json(data, "all_states_reward_calc_gw02")
 
 
                 #plot_rewards(episode_rewards=episode_rewards)

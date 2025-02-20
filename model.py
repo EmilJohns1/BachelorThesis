@@ -10,12 +10,13 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from sklearn.cluster import k_means
-
+from clusterer import Clusterer
 
 class Model:
-    def __init__(self, action_space_n, discount_factor, observation_space):
+    def __init__(self, action_space_n, discount_factor, observation_space, K, sigma):
         obs_dim = observation_space.shape[0]
         self.states: np.ndarray = np.empty((0, obs_dim))  # States are stored here
+        self.clusterer = Clusterer(K=K, D=obs_dim, sigma=sigma, lambda_=0.5, learning_rate=0.02)
         self.original_states: np.ndarray = np.empty(
             (0, obs_dim)
         )  # States are stored here
@@ -179,7 +180,9 @@ class Model:
         self.states_mean = np.mean(self.states, axis=0)
         self.states_std = np.std(self.states, axis=0)
 
-    def cluster_states(self):
+    def cluster_states(self, k, gaussian_width):
         #Do clustering
+        self.run_k_means(k=k)
+        self.update_transitions_and_rewards_for_clusters(gaussian_width=gaussian_width)
 
         self.using_clusters = True
