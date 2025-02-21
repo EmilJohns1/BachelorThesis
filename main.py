@@ -1,132 +1,62 @@
-import random
-import time
-import pygame
-from agent import Agent
-from env_manager import EnvironmentManager
-from model import Model
+import argparse
+from train_model_based import train_model_based_agent
 
-import numpy as np
 
-from util.cluster_visualizer import ClusterVisualizer
-from util.logger import write_to_json
-from util.reward_visualizer import plot_rewards
-
-for i in range(20):
-    #################################################
-    # These variables should be logged for each run
-    environment = "CartPole-v1"
-    discount_factor = 1
-    k = 3000
-    gaussian_width_rewards = 0.5
-    training_seed = random.randint(0, 2**32 - 1)
-    testing_seed = random.randint(0, 2**32 - 1)
-    comments = ""
-    training_time = 150
-    testing_time = 100
-    training_rewards = []
-    testing_rewards = []
-    #################################################
-
-    episode_rewards = []
-    render_mode = None  # Set to None to run without graphics
-
-    env_manager = EnvironmentManager(
-        render_mode=render_mode, environment=environment, seed=training_seed
-    )
-    model = Model(
-        action_space_n=env_manager.env.action_space.n,
-        _discount_factor=discount_factor,
-        _observation_space=env_manager.env.observation_space,
-    )
-    agent = Agent(model)
-
-    rewards = 0.0
-    actions = []
-    states = []
-    state, info = env_manager.reset()
-    states.append(state)
-
-    episodes = 0
-    finished_training = False
-    start = time.time()
-    while True:
-        if render_mode == "human":
-            for event in pygame.event.get():
-                if event.type == pygame.KEYDOWN and (
-                    event.key == pygame.K_ESCAPE or event.key == pygame.K_q
-                ):
-                    env_manager.close()
-                    exit()
-
-        states_mean, states_std = agent.normalize_states()
-        action_rewards, action_weights = agent.compute_action_rewards(
-            state, states_mean, states_std
+def main(args):
+    # if args.agent == "q-learning":
+    #     train_q_learning(args.env)
+    # elif args.agent == "dqn":
+    #     train_dqn(args.env)
+    if args.agent == "model-based":
+        if args.find_optimal_k:
+            find_k = True
+            lower_k, upper_k, step = args.find_optimal_k
+        else:
+            find_k = False
+            lower_k, upper_k, step = None, None, None
+        train_model_based_agent(
+            args.env,
+            args.training_time,
+            args.show_clusters_and_rewards,
+            find_k,
+            lower_k,
+            upper_k,
+            step,
         )
-        action = agent.get_action(action_rewards, action_weights)
+    else:
+        raise ValueError("Agent type not supported")
 
-        actions.append(action)
-        state, reward, terminated, truncated, info = env_manager.step(action)
-        states.append(state)
-        rewards += float(reward)
 
-        if terminated or truncated:
-            print(f"rewards: {rewards}")
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--agent",
+        type=str,
+        choices=["q-learning", "dqn", "model-based"],
+        required=True,
+        help="Choose the RL agent",
+    )
+    parser.add_argument(
+        "--env", type=str, default="CartPole-v1", help="Choose the environment"
+    )
+    parser.add_argument(
+        "--training_time", type=int, default=100, help="Training time in episodes"
+    )
+    parser.add_argument(
+        "--show_clusters_and_rewards",
+        action="store_true",
+        help="Include this if you want to show clusters and rewards",
+    )
+    parser.add_argument(
+        "--find_optimal_k",
+        type=int,
+        nargs=3,
+        metavar=("LOWER_K", "UPPER_K", "STEP"),
+        help="Find optimal k with range: lower_k, upper_k, step",
+    )
 
-            episode_rewards.append(rewards)
+    args = parser.parse_args()
+    main(args)
 
-            if episodes == training_time and not finished_training:
-                episodes = 0
-                end = time.time()
-                print("Time :{}".format(end - start))
-
-                model.run_k_means(k=k)
-                model.update_transitions_and_rewards_for_clusters(
-                    gaussian_width=gaussian_width_rewards
-                )
-
-                agent.use_clusters = True
-
-                #plot_rewards(episode_rewards=episode_rewards)
-
-                training_rewards = episode_rewards
-                episode_rewards = []
-                episodes = -1
-                finished_training = True
-
-                env_manager = EnvironmentManager(
-                    render_mode="human", environment=environment, seed=testing_seed
-                )
-
-            elif episodes < training_time and not finished_training:
-                model.update_model(states, actions, rewards)
-
-            if episodes == testing_time and finished_training:
-                testing_rewards = episode_rewards
-
-                data = {
-                    "environment": environment,
-                    "discount_factor": discount_factor,
-                    "k": k,
-                    "gaussian_width_rewards": gaussian_width_rewards,
-                    "training_seed": training_seed,
-                    "testing_seed": testing_seed,
-                    "comments": comments,
-                    "training_time": training_time,
-                    "testing_time": testing_time,
-                    "training_rewards": training_rewards,
-                    "testing_rewards": testing_rewards,
-                }
-                write_to_json(data)
-
-                # plot_rewards(episode_rewards=episode_rewards)
-                env_manager.close()
-                break
-
-            rewards = 0.0
-
-            actions.clear()
-            states.clear()
-            state, info = env_manager.reset()
-            states.append(state)
-
-            episodes += 1
+# Run by executing etc: python main.py --agent model-based --env CartPole-v1 --training_time 100 --show_clusters_and_rewards --find_optimal_k 15000 25000 500
+# Simple run: python main.py --agent model-based --env CartPole-v1 --training_time 100
