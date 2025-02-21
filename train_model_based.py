@@ -13,14 +13,16 @@ from util.logger import write_to_json
 from util.reward_visualizer import plot_rewards
 
 
-def train_model_based_agent(env_name, training_time):
+def train_model_based_agent(
+    env_name, training_time, show_clusters_and_rewards, find_k, lower_k, upper_k, step
+):
     for i in range(20):
         #################################################
         # These variables should be logged for each run
         environment = env_name if env_name else "CartPole-v1"
         discount_factor = 1.0
-        epsilon_decay = 0.99
-        k = 3000
+        epsilon_decay = 0.999
+        k = 4000
         gaussian_width_rewards = 0.5
         training_seed = random.randint(0, 2**32 - 1)
         testing_seed = random.randint(0, 2**32 - 1)
@@ -41,6 +43,11 @@ def train_model_based_agent(env_name, training_time):
             action_space_n=env_manager.env.action_space.n,
             _discount_factor=discount_factor,
             observation_space=env_manager.env.observation_space,
+            k=k,
+            find_k=find_k,
+            lower_k=lower_k,
+            upper_k=upper_k,
+            step=step,
         )
         agent = Agent(model)
 
@@ -66,7 +73,8 @@ def train_model_based_agent(env_name, training_time):
             action_rewards, action_weights = agent.compute_action_rewards(
                 state, states_mean, states_std
             )
-            agent.exploration_rate = max(0.01, 0.30 * (epsilon_decay ** episodes))
+            # Burde teste med forskjellige verdier for exploration_rate, og forskjellige decay funksjoner hvis det er bedre med en decaying exploration_rate.
+            agent.exploration_rate = max(0.05, 0.30 * (epsilon_decay**episodes))
 
             action = agent.get_action(action_rewards, action_weights)
 
@@ -91,7 +99,15 @@ def train_model_based_agent(env_name, training_time):
                     )
 
                     agent.use_clusters = True
-                    # plot_rewards(episode_rewards=episode_rewards)
+
+                    if show_clusters_and_rewards:
+                        plot_rewards(episode_rewards=episode_rewards)
+
+                        cluster_visualizer = ClusterVisualizer(model=model)
+
+                        cluster_visualizer.plot_clusters()
+                        cluster_visualizer.plot_rewards()
+
                     training_rewards = episode_rewards
                     episode_rewards = []
                     episodes = -1
@@ -123,7 +139,8 @@ def train_model_based_agent(env_name, training_time):
                     }
                     write_to_json(data)
 
-                    # plot_rewards(episode_rewards=episode_rewards)
+                    if show_clusters_and_rewards:
+                        plot_rewards(episode_rewards=episode_rewards)
                     env_manager.close()
                     break
 

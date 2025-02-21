@@ -62,7 +62,7 @@ class ClusterVisualizer:
             print("Insufficient dimensions to plot rewards.")
             return
 
-        tsne = TSNE(n_components=3, random_state=42)
+        tsne = TSNE(n_components=2, random_state=42)
         reduced_states = tsne.fit_transform(self.model.states)
         rewards = np.array(self.model.rewards)
 
@@ -72,7 +72,6 @@ class ClusterVisualizer:
         scatter = ax.scatter(
             reduced_states[:, 0],
             reduced_states[:, 1],
-            reduced_states[:, 2],
             c=rewards,
             cmap="coolwarm",
             alpha=0.8,

@@ -1,22 +1,32 @@
 from collections import defaultdict
 import gymnasium as gym
-from gym.spaces import Box, Discrete
+from gym.spaces import Box
+from gym.spaces import Discrete
 from scipy.cluster.vq import kmeans2
 from scipy.cluster.vq import vq
 from scipy.cluster.vq import whiten
 from scipy.special import log_softmax
-import matplotlib.pyplot as plt
 
 import numpy as np
 
 import matplotlib.pyplot as plt
 
-from sklearn.cluster import KMeans, MiniBatchKMeans, k_means
+from sklearn.cluster import KMeans
+from sklearn.cluster import MiniBatchKMeans
+from sklearn.cluster import k_means
 
 
 class Model:
     def __init__(
-        self, action_space_n, _discount_factor, observation_space, find_k=False
+        self,
+        action_space_n,
+        _discount_factor,
+        observation_space,
+        k,
+        find_k=False,
+        lower_k=None,
+        upper_k=None,
+        step=500,
     ):
         if isinstance(observation_space, gym.spaces.box.Box):
             obs_dim = observation_space.shape[0]
@@ -44,7 +54,11 @@ class Model:
         self.states_mean = np.zeros(obs_dim)
         self.M2 = np.zeros(obs_dim)
         self.states_std = np.ones(obs_dim)
+        self.k = k
         self.find_k = find_k
+        self.lower_k = lower_k
+        self.upper_k = upper_k
+        self.step = step
 
     def update_model(self, states, actions, rewards):
         for i, state in enumerate(states):
@@ -89,7 +103,7 @@ class Model:
 
         return shifted_rewards
 
-    def find_optimal_k(self, states, rewards, k_range=(10000, 25000)):
+    def find_optimal_k(self, states, rewards):
         """
         Uses the elbow method and second derivative to find the optimal k.
 
@@ -102,9 +116,9 @@ class Model:
             optimal_k (int): Best value of k based on the elbow method.
         """
 
-        k_min = max(1, int(k_range[0]))
-        k_max = max(k_min, int(k_range[1]))
-        step = 500
+        k_min = max(1, int(self.lower_k))
+        k_max = max(k_min, int(self.upper_k))
+        step = self.step
 
         k_values = range(k_min, k_max + 1, step)
         print(k_values)
@@ -143,6 +157,7 @@ class Model:
 
     def run_k_means(self):
         print("Running k-means elbow method...")
+        self.original_states = self.states
 
         states_array = self.states
 
@@ -153,16 +168,23 @@ class Model:
         new_rewards = np.exp(scaled_rewards)
 
         if self.find_k:
-            optimal_k = self.find_optimal_k(states_array, new_rewards)
-        else:
-            optimal_k = 3000
-        print(f"Optimal k found: {optimal_k}")
+            self.k = self.find_optimal_k(states_array, new_rewards)
 
-        k_means = KMeans(n_clusters=optimal_k, random_state=42, init="k-means++")
-        k_means.fit(states_array, sample_weight=new_rewards)
+        centroids, labels, inertia = k_means(
+            X=states_array, n_clusters=self.k, sample_weight=new_rewards
+        )
 
-        self.clustered_states = k_means.cluster_centers_
-        self.cluster_labels = k_means.labels_
+        self.clustered_states = centroids
+        self.cluster_labels = labels
+
+        # Kan bruke det nedenfor også, men bruker mye lenger tid grunnet n_init, og presterer ikke merkbart bedre.
+        # Må testes mer på bedre PC med forskjellige verdier for n_init.
+
+        # k_means = KMeans(n_clusters=optimal_k, random_state=42, n_init=10)
+        # k_means.fit(states_array, sample_weight=new_rewards)
+
+        # self.clustered_states = k_means.cluster_centers_
+        # self.cluster_labels = k_means.labels_
 
     def update_transitions_and_rewards_for_clusters(self, gaussian_width=0.2):
         state_to_cluster = {i: self.cluster_labels[i] for i in range(len(self.states))}
