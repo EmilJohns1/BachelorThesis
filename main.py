@@ -14,12 +14,12 @@ for i in range(100):
     # These variables should be logged for each run
     environment = "CartPole-v1"
     discount_factor = 1
-    k = 4000
+    k = 500
     gaussian_width_rewards = 0.2
     seed = random.randint(0, 2**32 - 1)
     comments = ""
-    training_time = 100
-    testing_time = 100
+    training_time = 50
+    testing_time = 50
     training_rewards = []
     testing_rewards = []
     #################################################

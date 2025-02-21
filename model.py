@@ -182,7 +182,20 @@ class Model:
 
     def cluster_states(self, k, gaussian_width):
         #Do clustering
-        self.run_k_means(k=k)
-        self.update_transitions_and_rewards_for_clusters(gaussian_width=gaussian_width)
-
+        #self.run_k_means(k=k)
+        #self.update_transitions_and_rewards_for_clusters(gaussian_width=gaussian_width)
+        print(f"Total states: {len(self.states)}")
+        counter = 0
+        for (state, reward) in zip(self.states, self.rewards):
+            self.clusterer.update(x=state, x_reward=reward)
+            counter += 1
+            if counter % 100 == 0:
+                print(f"Counter: {counter}")
+        (new_states, new_rewards, new_transitions_from, new_transitions_to) = self.clusterer.get_model_attributes()
+        self.states = new_states
+        self.rewards = new_rewards
+        self.state_action_transitions_from = new_transitions_from
+        self.state_action_transitions_to = new_transitions_to
+        self.states_mean = np.mean(self.states, axis=0)
+        self.states_std = np.std(self.states, axis=0)
         self.using_clusters = True

@@ -1,4 +1,7 @@
 import numpy as np
+import time
+from collections import defaultdict
+
 
 class Clusterer:
     def __init__(self, K: int, D: int, sigma: float, lambda_: float, learning_rate: float, action_space_n: int):
@@ -43,17 +46,17 @@ class Clusterer:
 
     def update(self, x: np.ndarray, x_reward):
         # weighting_function goes here
+        f = self.f(x)
 
         #Update centroids
-        diff = self.f(x).reshape(-1, 1) * (x - self.mu) - (2.0 * self.lambda_ *
+        diff = f.reshape(-1, 1) * (x - self.mu) - (2.0 * self.lambda_ *
                                                         (self.mu[self.j] - self.mu[self.i]) * self.f(self.mu[self.j], self.i).reshape(-1, 1)).reshape(
                                                             -1, self.K - 1, self.mu.shape[1]).sum(axis=1)
-
+        
         self.mu += self.learning_rate * diff / self.sigma
 
         #Update Q for labeling
         p = np.inf
-        f = self.f(x)
         self.f_sum += f
         if p != None:
             f /= np.linalg.norm(f, p)
@@ -63,11 +66,15 @@ class Clusterer:
         self.N += 1
 
         #Update rewards
-        weights = self.f(x)
-        rewards = weights * x_reward
-        self.cluster_weights += weights
-        self.cluster_rewards *= 1/(1 + weights/self.cluster_weights)
-        self.cluster_rewards += rewards/self.cluster_weights
+        weights = f
+
+        mask = weights != 0
+
+        # Apply the mask
+        rewards = weights[mask] * x_reward
+        self.cluster_weights[mask] += weights[mask]
+        self.cluster_rewards[mask] *= 1 / (1 + weights[mask] / self.cluster_weights[mask])
+        self.cluster_rewards[mask] += rewards / self.cluster_weights[mask]
         
     def f_min(self) -> float:
         # sqrt(a/2) is the inflection point and equal to solution of d^2/dx^2 e^(-x^2/a) = 0 given x>0, a>0
@@ -107,6 +114,46 @@ class Clusterer:
     def update_transitions(self, x: np.ndarray):
         # Get the labels of the clusters and states
         centroid_labels = self.get_centroid_labels()
+        state_to_cluster = np.array([])
+
+        for state in x:
+            gaussian_weights = self.f(state)
+            closest_centroid_index = np.argmax(gaussian_weights)
+            state_label = centroid_labels[closest_centroid_index]
+            state_to_cluster.append(state_label)
+
+        transition_counts = defaultdict(lambda: defaultdict(int))
+
+        for action in self.actions:
+            for from_state, to_state in zip(
+                self.state_action_transitions_from[action],
+                self.state_action_transitions_to[action],
+            ):
+                from_cluster = state_to_cluster[from_state]
+                to_cluster = state_to_cluster[to_state]
+
+                transition_counts[(from_cluster, action)][to_cluster] += 1
+
+        clustered_transitions_from = [[] for _ in self.actions]
+        clustered_transitions_to = [[] for _ in self.actions]
+        clustered_transition_probs = [{} for _ in self.actions]
+
+        for (from_cluster, action), to_clusters in transition_counts.items():
+            total_transitions = sum(to_clusters.values())
+
+            for to_cluster, count in to_clusters.items():
+                clustered_transitions_from[action].append(from_cluster)
+                clustered_transitions_to[action].append(to_cluster)
+                clustered_transition_probs[action][(from_cluster, to_cluster)] = (
+                    count / total_transitions
+                )
+
+        self.transitions_from = clustered_transitions_from
+        self.transitions_to = clustered_transitions_to
+
+    def get_model_attributes(self):
+        return (self.mu, self.cluster_rewards, self.transitions_from, self.transitions_to)
+
 
         # for all states:
         #   find gaussian weight to all centroids
