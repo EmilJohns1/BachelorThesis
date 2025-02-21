@@ -7,6 +7,8 @@ import torch.nn as nn
 import torch.optim as optim
 
 from env_manager import EnvironmentManager
+from util.logger import write_to_json
+from util.reward_visualizer import plot_rewards
 
 
 class DQNNetwork(nn.Module):
@@ -151,12 +153,13 @@ def train_dqn_cartpole(
     epsilon_decay=20,
     buffer_capacity=10000,
     batch_size=64,
-    target_update_freq=100
+    target_update_freq=100,
+    seed=random.randint(0, 2 ** 32 - 1)
 ):
 
 
     # Create EnvironmentManager for training
-    env_manager = EnvironmentManager(render_mode=None)
+    env_manager = EnvironmentManager(render_mode=None, seed=seed, environment="CartPole-v1")
     state_dim = env_manager.env.observation_space.shape[0]
     action_dim = env_manager.env.action_space.n
     agent = DQNAgent(
@@ -195,6 +198,7 @@ def train_dqn_cartpole(
 
         episode_rewards.append(episode_reward)
         print(f"Episode {ep+1}, Reward: {episode_reward}, Epsilon: {agent.epsilon:.3f}")
+
 
     data = {
         "episode_rewards": episode_rewards,
