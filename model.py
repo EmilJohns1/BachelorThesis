@@ -181,17 +181,18 @@ class Model:
         self.states_std = np.std(self.states, axis=0)
 
     def cluster_states(self, k, gaussian_width):
-        #Do clustering
-        #self.run_k_means(k=k)
-        #self.update_transitions_and_rewards_for_clusters(gaussian_width=gaussian_width)
         print(f"Total states: {len(self.states)}")
-        counter = 0
-        for (state, reward) in zip(self.states, self.rewards):
-            self.clusterer.update(x=state, x_reward=reward)
-            counter += 1
-            if counter % 100 == 0:
-                print(f"Counter: {counter}")
+    
+        # Perform batch update instead of per-state updates
+        for i in range(10):
+            self.clusterer.update(X=np.array(self.states), X_rewards=np.array(self.rewards))
+        self.clusterer.update_transitions(x=self.states, 
+                                          state_action_transitions_from=self.state_action_transitions_from,
+                                          state_action_transitions_to=self.state_action_transitions_to)
+
+        # Get the updated centroids and rewards
         (new_states, new_rewards, new_transitions_from, new_transitions_to) = self.clusterer.get_model_attributes()
+
         self.states = new_states
         self.rewards = new_rewards
         self.state_action_transitions_from = new_transitions_from

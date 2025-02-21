@@ -44,43 +44,50 @@ class Clusterer:
                 return np.exp(-np.square(x - self.mu[i]).sum() / self.sigma)
             return np.exp(-np.square(x - self.mu[i]).sum(axis=1) / self.sigma)
 
-    def update(self, x: np.ndarray, x_reward):
-        # weighting_function goes here
-        f = self.f(x)
+    def update(self, X: np.ndarray, X_rewards: np.ndarray):
+        """
+        X: Array of shape (num_states, D)
+        X_rewards: Array of shape (num_states,)
+        """
+        # Compute weights for all states at once
+        F = np.exp(-np.square(X[:, np.newaxis, :] - self.mu).sum(axis=2) / self.sigma)  # Shape: (num_states, K)
 
-        #Update centroids
-        diff = f.reshape(-1, 1) * (x - self.mu) - (2.0 * self.lambda_ *
-                                                        (self.mu[self.j] - self.mu[self.i]) * self.f(self.mu[self.j], self.i).reshape(-1, 1)).reshape(
-                                                            -1, self.K - 1, self.mu.shape[1]).sum(axis=1)
+        # Compute weighted differences for centroids
+        diff = (F[..., np.newaxis] * (X[:, np.newaxis, :] - self.mu)).sum(axis=0)  # Shape: (K, D)
+
+        # Compute competitive interactions between centroids (as before)
+        # Compute interactions between centroids (Fixing shape issue)
+        mu_diff = self.mu[self.j] - self.mu[self.i]  # Shape: (K*(K-1), D)
+
+        # Compute pairwise influence
+        centroid_weights = self.f(self.mu[self.j], self.i)  # Shape: (K*(K-1),)
+        centroid_weights = centroid_weights.reshape(-1, 1)  # Reshape for broadcasting
+
+        # Sum contributions correctly (Fix: Use sum over the correct axis)
+        neighboring_influence = (2.0 * self.lambda_ * mu_diff * centroid_weights).reshape(self.K, self.K - 1, self.D).sum(axis=1)  # Shape: (K, D)
+
         
-        self.mu += self.learning_rate * diff / self.sigma
+        # Update centroids in a single step
+        self.mu += (self.learning_rate / self.sigma) * (diff - neighboring_influence)
 
-        #Update Q for labeling
-        p = np.inf
-        self.f_sum += f
-        if p != None:
-            f /= np.linalg.norm(f, p)
-
-        self.Q[self.k, self.l] += f[self.k] * f[self.l]
-
-        self.N += 1
-
-        #Update rewards
-        weights = f
-
+        # Update rewards
+        weights = F.sum(axis=0)  # Aggregate weights per centroid
         mask = weights != 0
 
-        # Apply the mask
-        rewards = weights[mask] * x_reward
+        # Aggregate rewards per centroid
+        rewards = (F * X_rewards[:, np.newaxis]).sum(axis=0)  
+
+        # Apply updates only where mask is True
         self.cluster_weights[mask] += weights[mask]
         self.cluster_rewards[mask] *= 1 / (1 + weights[mask] / self.cluster_weights[mask])
-        self.cluster_rewards[mask] += rewards / self.cluster_weights[mask]
+        self.cluster_rewards[mask] += rewards[mask] / self.cluster_weights[mask]
+
         
     def f_min(self) -> float:
         # sqrt(a/2) is the inflection point and equal to solution of d^2/dx^2 e^(-x^2/a) = 0 given x>0, a>0
         return np.exp(-np.square(3. * np.sqrt(self.sigma / 2.) - 0.).sum() / self.sigma)
     
-    def get_centroid_labels(self, R_min: float, use_f_min: bool = False) -> np.ndarray:
+    def get_centroid_labels(self, R_min=1. / 9., use_f_min: bool = False) -> np.ndarray:
         """
         `use_f_min = True` (default `False`): the Gaussian functions with negligible average output are disregarded.
         """
@@ -111,23 +118,25 @@ class Clusterer:
 
         return labels
 
-    def update_transitions(self, x: np.ndarray):
-        # Get the labels of the clusters and states
+    def update_transitions(self, x: np.ndarray, state_action_transitions_from, state_action_transitions_to):
+        # Get the labels of the clusters
         centroid_labels = self.get_centroid_labels()
-        state_to_cluster = np.array([])
 
-        for state in x:
-            gaussian_weights = self.f(state)
-            closest_centroid_index = np.argmax(gaussian_weights)
-            state_label = centroid_labels[closest_centroid_index]
-            state_to_cluster.append(state_label)
+        # Compute Gaussian weights for all states against all centroids
+        gaussian_weights = np.exp(-np.square(x[:, np.newaxis, :] - self.mu).sum(axis=2) / self.sigma)  # Shape: (num_states, K)
+
+        # Find the closest centroid for each state based on the highest weight
+        closest_centroid_indices = np.argmax(gaussian_weights, axis=1)  # Shape: (num_states,)
+
+        # Assign each state to its corresponding cluster label
+        state_to_cluster = centroid_labels[closest_centroid_indices]  # Shape: (num_states,)
 
         transition_counts = defaultdict(lambda: defaultdict(int))
 
         for action in self.actions:
             for from_state, to_state in zip(
-                self.state_action_transitions_from[action],
-                self.state_action_transitions_to[action],
+                state_action_transitions_from[action],
+                state_action_transitions_to[action],
             ):
                 from_cluster = state_to_cluster[from_state]
                 to_cluster = state_to_cluster[to_state]
@@ -153,13 +162,6 @@ class Clusterer:
 
     def get_model_attributes(self):
         return (self.mu, self.cluster_rewards, self.transitions_from, self.transitions_to)
-
-
-        # for all states:
-        #   find gaussian weight to all centroids
-        #   argmax to get the index of the closest centroid
-        #   use index on centroid_labels to get the corresponding label. 
-        #   store in list for updating transitions
 
         
         
