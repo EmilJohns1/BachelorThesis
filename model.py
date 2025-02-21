@@ -1,19 +1,30 @@
 from collections import defaultdict
+import gymnasium as gym
+from gym.spaces import Box, Discrete
 from scipy.cluster.vq import kmeans2
 from scipy.cluster.vq import vq
 from scipy.cluster.vq import whiten
 from scipy.special import log_softmax
+import matplotlib.pyplot as plt
 
 import numpy as np
 
 import matplotlib.pyplot as plt
 
-from sklearn.cluster import k_means
+from sklearn.cluster import KMeans, MiniBatchKMeans, k_means
 
 
 class Model:
-    def __init__(self, action_space_n, _discount_factor, _observation_space):
-        obs_dim = _observation_space.shape[0]
+    def __init__(
+        self, action_space_n, _discount_factor, observation_space, find_k=False
+    ):
+        if isinstance(observation_space, gym.spaces.box.Box):
+            obs_dim = observation_space.shape[0]
+        elif isinstance(observation_space, gym.spaces.discrete.Discrete):
+            obs_dim = 1
+        else:
+            raise ValueError("Unsupported observation space type!")
+
         self.states: np.ndarray = np.empty((0, obs_dim))  # States are stored here
         self.original_states: np.ndarray = np.empty(
             (0, obs_dim)
@@ -33,6 +44,7 @@ class Model:
         self.states_mean = np.zeros(obs_dim)
         self.M2 = np.zeros(obs_dim)
         self.states_std = np.ones(obs_dim)
+        self.find_k = find_k
 
     def update_model(self, states, actions, rewards):
         for i, state in enumerate(states):
@@ -63,6 +75,7 @@ class Model:
 
     def scale_rewards(self, log_softmaxed_rewards, new_min=0.01, new_max=100.0):
         print("Shifting rewards...")
+        print(log_softmaxed_rewards)
 
         rewards = np.array(log_softmaxed_rewards)
         max_reward = np.max(rewards)
@@ -76,35 +89,80 @@ class Model:
 
         return shifted_rewards
 
-    def run_k_means(self, k):
-        print("Running k-means...")
+    def find_optimal_k(self, states, rewards, k_range=(10000, 25000)):
+        """
+        Uses the elbow method and second derivative to find the optimal k.
 
-        self.original_states = self.states
+        Parameters:
+            states (np.array): Array of states.
+            rewards (np.array): Array of rewards (used as weights).
+            k_range (tuple): Range of k values to try.
 
-        states_array = np.array(self.states)
+        Returns:
+            optimal_k (int): Best value of k based on the elbow method.
+        """
+
+        k_min = max(1, int(k_range[0]))
+        k_max = max(k_min, int(k_range[1]))
+        step = 500
+
+        k_values = range(k_min, k_max + 1, step)
+        print(k_values)
+
+        print(f"Trying k values: {k_values}...")
+        inertia_values = []
+
+        for k in k_values:
+            print(k)
+            kmeans = MiniBatchKMeans(
+                n_clusters=k, random_state=42, n_init=10, batch_size=1000
+            )
+            kmeans.fit(states, sample_weight=rewards)
+            inertia = kmeans.inertia_
+            inertia_values.append(inertia)
+
+        first_derivative = np.diff(inertia_values)
+
+        second_derivative = np.diff(first_derivative)
+
+        k_temp = k_values[np.argmin(second_derivative) + 1]
+        optimal_k = np.max([k_temp, 1])
+
+        plt.figure(figsize=(10, 5))
+        plt.plot(k_values, inertia_values, marker="o", label="Inertia")
+        plt.xlabel("Number of Clusters (k)")
+        plt.ylabel("Inertia")
+        plt.title("Elbow Method for Optimal k")
+        plt.axvline(
+            optimal_k, color="r", linestyle="--", label=f"Optimal k = {optimal_k}"
+        )
+        plt.legend()
+        plt.show()
+
+        return optimal_k
+
+    def run_k_means(self):
+        print("Running k-means elbow method...")
+
+        states_array = self.states
 
         log_softmax_rewards = log_softmax(self.rewards)
-        print(log_softmax_rewards)
-
         scaled_rewards = self.scale_rewards(
-            log_softmaxed_rewards=log_softmax_rewards, new_min=-40, new_max=15
+            log_softmax_rewards, new_min=-40, new_max=15
         )
-        print(scaled_rewards)
-
         new_rewards = np.exp(scaled_rewards)
 
-        print(new_rewards)
+        if self.find_k:
+            optimal_k = self.find_optimal_k(states_array, new_rewards)
+        else:
+            optimal_k = 3000
+        print(f"Optimal k found: {optimal_k}")
 
-        if np.any(new_rewards == 0):
-            print("Warning: Zero values detected in new_rewards!")
-            print("Indices with zero values:", np.where(new_rewards == 0))
+        k_means = KMeans(n_clusters=optimal_k, random_state=42, init="k-means++")
+        k_means.fit(states_array, sample_weight=new_rewards)
 
-        centroids, labels, inertia = k_means(
-            X=states_array, n_clusters=k, sample_weight=new_rewards
-        )
-
-        self.clustered_states = centroids
-        self.cluster_labels = labels
+        self.clustered_states = k_means.cluster_centers_
+        self.cluster_labels = k_means.labels_
 
     def update_transitions_and_rewards_for_clusters(self, gaussian_width=0.2):
         state_to_cluster = {i: self.cluster_labels[i] for i in range(len(self.states))}
