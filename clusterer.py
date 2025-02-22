@@ -2,6 +2,8 @@ import numpy as np
 import time
 from collections import defaultdict
 
+from scipy.special import softmax
+
 
 class Clusterer:
     def __init__(self, K: int, D: int, sigma: float, lambda_: float, learning_rate: float, action_space_n: int):
@@ -21,11 +23,6 @@ class Clusterer:
                     self.i.append(i)
                     self.j.append(j)
 
-        # Attributes for identifying labels for centroids and states
-        self.Q = np.zeros((K, K))
-        self.f_sum = np.zeros(K)
-        self.N = 0.0
-        self.k, self.l = np.indices((K, K))
 
         #Rewards for each centroid i
         self.cluster_rewards = np.zeros(K)
@@ -55,89 +52,38 @@ class Clusterer:
             max_vals = np.max(X, axis=0)
             self.mu = np.random.uniform(low=min_vals, high=max_vals, size=(self.K, self.D))
             self.is_initialized = True
-        # Compute weights for all states at once
+
+        n_iter = 5  # Number of Gauss-Seidel sweeps; adjust as needed
+        reward_weights = softmax(X_rewards)
+        for _ in range(n_iter):
+            print(f"Iteration {_}")
+            for i in range(self.K):
+                # Data-driven update for centroid i
+                # Compute F for all states relative to centroid i
+                F_i = np.exp(-np.sum((X - self.mu[i])**2, axis=1) / self.sigma)  # Shape: (num_states,)
+                diff_i = np.sum((F_i*reward_weights)[:, None] * (X - self.mu[i]), axis=0)  # Shape: (D,)
+
+                # Compute neighboring influence for centroid i
+                # Use a mask to exclude centroid i
+                mask = np.arange(self.K) != i
+                neighbors = self.mu[mask]  # (K-1, D)
+                # Compute weights between centroid i and all other centroids
+                weights = np.exp(-np.sum((neighbors - self.mu[i])**2, axis=1) / self.sigma)  # (K-1,)
+                # Sum influence over neighbors
+                influence = 2.0 * self.lambda_ * np.sum(weights[:, None] * (neighbors - self.mu[i]), axis=0)
+
+                # Gauss-Seidel update for centroid i
+                self.mu[i] += (self.learning_rate / self.sigma) * (diff_i - influence)
+
+        # Update rewards using the final centroids
         F = np.exp(-np.square(X[:, np.newaxis, :] - self.mu).sum(axis=2) / self.sigma)  # Shape: (num_states, K)
-
-        # Compute weighted differences for centroids
-        diff = (F[..., np.newaxis] * (X[:, np.newaxis, :] - self.mu)).sum(axis=0)  # Shape: (K, D)
-
-        # Compute competitive interactions between centroids (as before)
-        # Compute interactions between centroids (Fixing shape issue)
-        mu_diff = self.mu[self.j] - self.mu[self.i]  # Shape: (K*(K-1), D)
-
-        # Compute pairwise influence
-        centroid_weights = self.f(self.mu[self.j], self.i)  # Shape: (K*(K-1),)
-        centroid_weights = centroid_weights.reshape(-1, 1)  # Reshape for broadcasting
-
-        # Sum contributions correctly (Fix: Use sum over the correct axis)
-        neighboring_influence = (2.0 * self.lambda_ * mu_diff * centroid_weights).reshape(self.K, self.K - 1, self.D).sum(axis=1)  # Shape: (K, D)
-
-        
-        # Update centroids in a single step
-        self.mu += (self.learning_rate / self.sigma) * (diff - neighboring_influence)
-
-        # Update rewards
-        weights = F.sum(axis=0)  # Aggregate weights per centroid
+        weights = F.sum(axis=0)
         mask = weights != 0
-
-        # Aggregate rewards per centroid
-        rewards = (F * X_rewards[:, np.newaxis]).sum(axis=0)  
-
-        # Apply updates only where mask is True
+        rewards = (F * X_rewards[:, np.newaxis]).sum(axis=0)
         self.cluster_weights[mask] += weights[mask]
         self.cluster_rewards[mask] *= 1 / (1 + weights[mask] / self.cluster_weights[mask])
         self.cluster_rewards[mask] += rewards[mask] / self.cluster_weights[mask]
-
-        f_all = np.exp(-np.square(X[:, np.newaxis, :] - self.mu).sum(axis=2) / self.sigma)
-
-        # Update the cumulative sum of f values
-        self.f_sum += np.sum(f_all, axis=0)
-
-        # Normalize each row of f_all by its L-inf norm
-        norms = np.max(f_all, axis=1, keepdims=True)
-        normalized_f = f_all / norms
-
-        # Update Q by summing the outer products for all states
-        self.Q += normalized_f.T @ normalized_f
-
-        # Increment N by the number of states processed
-        self.N += X.shape[0]
-
         
-    def f_min(self) -> float:
-        # sqrt(a/2) is the inflection point and equal to solution of d^2/dx^2 e^(-x^2/a) = 0 given x>0, a>0
-        return np.exp(-np.square(3. * np.sqrt(self.sigma / 2.) - 0.).sum() / self.sigma)
-    
-    def get_centroid_labels(self, R_min=0.99999, use_f_min: bool = False) -> np.ndarray:
-        # Compute R safely, converting any NaNs to 0
-        with np.errstate(divide='ignore', invalid='ignore'):
-            R = self.Q[self.k, self.l] / (np.sqrt(self.Q[self.k, self.k]) * np.sqrt(self.Q[self.l, self.l]))
-            R = np.nan_to_num(R)
-            
-        if use_f_min:
-            f_min = self.f_min()
-            for k in range(self.K):
-                if self.f_sum[k] / self.N < f_min:
-                    R[k, :] = 0.0
-                    R[:, k] = 0.0
-
-        labels = np.zeros(self.K, dtype=int)
-        L = 0
-
-        # Iterative connectivity assignment using a stack
-        for k in range(self.K):
-            if labels[k] == 0 and R[k, k] > 0.0:
-                L += 1
-                stack = [k]
-                while stack:
-                    current = stack.pop()
-                    if labels[current] == 0:
-                        labels[current] = L
-                        for l in range(self.K):
-                            if labels[l] == 0 and R[current, l] > R_min:
-                                stack.append(l)
-        return labels
-
     def update_transitions(self, x: np.ndarray, state_action_transitions_from, state_action_transitions_to, threshold: float):
         gaussian_weights = np.exp(-np.square(x[:, np.newaxis, :] - self.mu).sum(axis=2) / self.sigma)  # Shape: (num_states, K)
 
@@ -159,7 +105,8 @@ class Clusterer:
                 from_cluster = state_to_cluster[from_state]
                 to_cluster = state_to_cluster[to_state]
                 transition_counts[(from_cluster, action)][to_cluster] += 1
-
+        
+        
         clustered_transitions_from = [[] for _ in self.actions]
         clustered_transitions_to = [[] for _ in self.actions]
         clustered_transition_probs = [{} for _ in self.actions]
@@ -176,7 +123,3 @@ class Clusterer:
 
     def get_model_attributes(self):
         return (self.mu, self.cluster_rewards, self.transitions_from, self.transitions_to)
-
-        
-        
-        

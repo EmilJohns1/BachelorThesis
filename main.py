@@ -6,15 +6,22 @@ from env_manager import EnvironmentManager
 from model import Model
 from util.cluster_visualizer import ClusterVisualizer
 from util.logger import write_to_json
-from util.reward_visualizer import plot_rewards
+from util.reward_visualizer import plot_rewards, plot_multiple_runs
 
+""" plot_multiple_runs(folder_name="logs/online_clustering_1e-2_filter", title="1e-2", field="testing_rewards", block=False)
+plot_multiple_runs(folder_name="logs/online_clustering_8e-1_filter", title="8e-1", field="testing_rewards", block=False)
+plot_multiple_runs(folder_name="logs/online_clustering_5e-1_filter", title="5e-1", field="testing_rewards", block=False)
+plot_multiple_runs(folder_name="logs/online_clustering_2e-1_filter", title="2e-1", field="testing_rewards", block=False)
+plot_multiple_runs(folder_name="logs/weighted_online_clustering", title="1e-1", field="testing_rewards")
+ """
 import numpy as np
 for i in range(1):
+    print("--- Starting new run ---")
     #################################################
     # These variables should be logged for each run
     environment = "CartPole-v1"
     discount_factor = 1
-    k = 3000
+    k = 4000
     gaussian_width_rewards = 0.2
     seed = random.randint(0, 2**32 - 1)
     comments = ""
@@ -103,7 +110,7 @@ for i in range(1):
                     "training_rewards" : training_rewards,
                     "testing_rewards" : testing_rewards
                 }
-                write_to_json(data, "")
+                write_to_json(data, "online_clustering_1e-2_filter")
 
 
                 #plot_rewards(episode_rewards=episode_rewards)

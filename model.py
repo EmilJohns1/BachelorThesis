@@ -81,6 +81,11 @@ class Model:
         shifted_rewards = rewards + (new_max - max_reward)
 
         return shifted_rewards
+    
+    def scaled_log_softmax(self):
+        log_softmax_rewards = log_softmax(self.rewards)
+        scaled_rewards = self.scale_rewards(log_softmaxed_rewards=log_softmax_rewards, new_max=3)
+        return np.exp(scaled_rewards)
 
     def run_k_means(self, k):
         print("Running k-means...")
@@ -90,15 +95,7 @@ class Model:
 
         states_array = np.array(self.states)
 
-        log_softmax_rewards = log_softmax(self.rewards)
-        print(log_softmax_rewards)
-
-        scaled_rewards = self.scale_rewards(log_softmaxed_rewards=log_softmax_rewards, new_min=-40, new_max=15)
-        print(scaled_rewards)
-
-        new_rewards = np.exp(scaled_rewards)
-
-        print(new_rewards)
+        new_rewards = self.scaled_log_softmax()
         
         if np.any(new_rewards == 0):
             print("Warning: Zero values detected in new_rewards!")
@@ -199,7 +196,7 @@ class Model:
         self.clusterer.update_transitions(x=self.states, 
                                           state_action_transitions_from=self.state_action_transitions_from,
                                           state_action_transitions_to=self.state_action_transitions_to,
-                                          threshold=1e-5)
+                                          threshold=5e-1)
         
 
         # Get the updated centroids and rewards
@@ -213,5 +210,5 @@ class Model:
         self.states_std = np.std(self.states, axis=0)
         self.using_clusters = True
 
-        visualizer = ClusterVisualizer(model=self)
-        visualizer.plot_clusters()
+        #visualizer = ClusterVisualizer(model=self)
+        #visualizer.plot_clusters()
