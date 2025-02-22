@@ -14,46 +14,68 @@ class ClusterVisualizer:
         self.model = model
 
     def plot_clusters(self):
+        fig, axes = plt.subplots(1, 2, figsize=(16, 8))  # Two side-by-side plots
+
+        ### PLOT 1: Original States - Colored by Original Rewards ###
         if self.model.original_states.shape[1] > 2:
             tsne = TSNE(n_components=2, random_state=42)
-            states_2d = tsne.fit_transform(self.model.original_states)
+            original_states_2d = tsne.fit_transform(self.model.original_states)
         else:
-            states_2d = self.model.original_states
+            original_states_2d = self.model.original_states
 
-        fig, ax = plt.subplots(figsize=(10, 8))
-
-        num_groups = 15
-        agglomerative = AgglomerativeClustering(
-            n_clusters=num_groups, metric="euclidean", linkage="ward"
-        )
-        centroids = self.model.clustered_states
-        group_labels = agglomerative.fit_predict(centroids)
-
-        colormap = plt.cm.get_cmap("magma", num_groups)
-        colors = [colormap(label) for label in group_labels]
-
-        label_to_color = {}
-        for i, label in enumerate(self.model.cluster_labels):
-            group = group_labels[label]
-            label_to_color[label] = colors[group]
-
-        scatter = ax.scatter(
-            states_2d[:, 0],
-            states_2d[:, 1],
-            c=[label_to_color[label] for label in self.model.cluster_labels],
+        original_rewards = self.model.original_rewards  # Get original rewards
+        scatter1 = axes[0].scatter(
+            original_states_2d[:, 0],
+            original_states_2d[:, 1],
+            c=original_rewards,  # Color by original rewards
+            cmap="viridis",
             s=25,
             alpha=0.8,
-            edgecolors="k",
-            marker="o",
-            linewidths=0.5,
+            edgecolors="k"
         )
 
-        cbar = plt.colorbar(scatter)
-        cbar.set_label("Cluster Group")
+        cbar1 = plt.colorbar(scatter1, ax=axes[0])
+        cbar1.set_label("Original Reward Value")
 
-        ax.set_xlabel("TSNE Component 1")
-        ax.set_ylabel("TSNE Component 2")
-        ax.set_title("2D Visualization of States and Clusters (Grouped by Proximity)")
+        axes[0].set_title("Original States (Colored by Original Rewards)")
+        axes[0].set_xlabel("TSNE Component 1")
+        axes[0].set_ylabel("TSNE Component 2")
+
+        ### PLOT 2: Clustered States - Colored by Clustered Rewards ###
+        if self.model.states.shape[1] > 2:
+            tsne = TSNE(n_components=2, random_state=42)
+            clustered_states_2d = tsne.fit_transform(self.model.states)
+        else:
+            clustered_states_2d = self.model.states
+
+        clustered_rewards = self.model.rewards  # Get clustered rewards
+        scatter2 = axes[1].scatter(
+            clustered_states_2d[:, 0],
+            clustered_states_2d[:, 1],
+            c=clustered_rewards,  # Color by clustered rewards
+            cmap="viridis",
+            s=25,
+            alpha=0.8,
+            edgecolors="k"
+        )
+
+        cbar2 = plt.colorbar(scatter2, ax=axes[1])
+        cbar2.set_label("Clustered Reward Value")
+
+        axes[1].set_title("Clustered States (Colored by Clustered Rewards)")
+        axes[1].set_xlabel("TSNE Component 1")
+        axes[1].set_ylabel("TSNE Component 2")
+
+        ### SET SAME LIMITS FOR BOTH PLOTS ###
+        all_x = np.concatenate((original_states_2d[:, 0], clustered_states_2d[:, 0]))
+        all_y = np.concatenate((original_states_2d[:, 1], clustered_states_2d[:, 1]))
+
+        x_min, x_max = all_x.min(), all_x.max()
+        y_min, y_max = all_y.min(), all_y.max()
+
+        for ax in axes:
+            ax.set_xlim(x_min, x_max)
+            ax.set_ylim(y_min, y_max)
 
         plt.show()
 

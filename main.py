@@ -9,7 +9,7 @@ from util.logger import write_to_json
 from util.reward_visualizer import plot_rewards
 
 import numpy as np
-for i in range(100):
+for i in range(1):
     #################################################
     # These variables should be logged for each run
     environment = "CartPole-v1"

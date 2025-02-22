@@ -7,7 +7,8 @@ class Clusterer:
     def __init__(self, K: int, D: int, sigma: float, lambda_: float, learning_rate: float, action_space_n: int):
         self.K = K
         self.D = D
-        self.mu = np.random.rand(K, D)
+        self.mu = None
+        self.is_initialized = False
         self.sigma = sigma
         self.lambda_ = lambda_
         self.learning_rate = learning_rate
@@ -49,6 +50,11 @@ class Clusterer:
         X: Array of shape (num_states, D)
         X_rewards: Array of shape (num_states,)
         """
+        if not self.is_initialized:
+            min_vals = np.min(X, axis=0)
+            max_vals = np.max(X, axis=0)
+            self.mu = np.random.uniform(low=min_vals, high=max_vals, size=(self.K, self.D))
+            self.is_initialized = True
         # Compute weights for all states at once
         F = np.exp(-np.square(X[:, np.newaxis, :] - self.mu).sum(axis=2) / self.sigma)  # Shape: (num_states, K)
 
@@ -82,54 +88,62 @@ class Clusterer:
         self.cluster_rewards[mask] *= 1 / (1 + weights[mask] / self.cluster_weights[mask])
         self.cluster_rewards[mask] += rewards[mask] / self.cluster_weights[mask]
 
+        f_all = np.exp(-np.square(X[:, np.newaxis, :] - self.mu).sum(axis=2) / self.sigma)
+
+        # Update the cumulative sum of f values
+        self.f_sum += np.sum(f_all, axis=0)
+
+        # Normalize each row of f_all by its L-inf norm
+        norms = np.max(f_all, axis=1, keepdims=True)
+        normalized_f = f_all / norms
+
+        # Update Q by summing the outer products for all states
+        self.Q += normalized_f.T @ normalized_f
+
+        # Increment N by the number of states processed
+        self.N += X.shape[0]
+
         
     def f_min(self) -> float:
         # sqrt(a/2) is the inflection point and equal to solution of d^2/dx^2 e^(-x^2/a) = 0 given x>0, a>0
         return np.exp(-np.square(3. * np.sqrt(self.sigma / 2.) - 0.).sum() / self.sigma)
     
-    def get_centroid_labels(self, R_min=1. / 9., use_f_min: bool = False) -> np.ndarray:
-        """
-        `use_f_min = True` (default `False`): the Gaussian functions with negligible average output are disregarded.
-        """
-        R = np.empty((self.K, self.K))
-        R[self.k, self.l] = self.Q[self.k, self.l] / (np.sqrt(self.Q[self.k, self.k]) * np.sqrt(self.Q[self.l, self.l]))
-
+    def get_centroid_labels(self, R_min=0.99999, use_f_min: bool = False) -> np.ndarray:
+        # Compute R safely, converting any NaNs to 0
+        with np.errstate(divide='ignore', invalid='ignore'):
+            R = self.Q[self.k, self.l] / (np.sqrt(self.Q[self.k, self.k]) * np.sqrt(self.Q[self.l, self.l]))
+            R = np.nan_to_num(R)
+            
         if use_f_min:
             f_min = self.f_min()
-            for k in range(self.model.K):
+            for k in range(self.K):
                 if self.f_sum[k] / self.N < f_min:
-                    for l in range(self.K):
-                        R[k, l] = 0.0
-                        R[l, k] = 0.0
+                    R[k, :] = 0.0
+                    R[:, k] = 0.0
 
         labels = np.zeros(self.K, dtype=int)
-        L: int = 0
+        L = 0
 
-        def assign(k):
-            labels[k] = L
-            for l in range(self.K):
-                if labels[l] == 0 and R[k, l] > R_min:
-                    assign(l)
-
+        # Iterative connectivity assignment using a stack
         for k in range(self.K):
             if labels[k] == 0 and R[k, k] > 0.0:
                 L += 1
-                assign(k)
-
+                stack = [k]
+                while stack:
+                    current = stack.pop()
+                    if labels[current] == 0:
+                        labels[current] = L
+                        for l in range(self.K):
+                            if labels[l] == 0 and R[current, l] > R_min:
+                                stack.append(l)
         return labels
 
-    def update_transitions(self, x: np.ndarray, state_action_transitions_from, state_action_transitions_to):
-        # Get the labels of the clusters
-        centroid_labels = self.get_centroid_labels()
-
-        # Compute Gaussian weights for all states against all centroids
+    def update_transitions(self, x: np.ndarray, state_action_transitions_from, state_action_transitions_to, threshold: float):
         gaussian_weights = np.exp(-np.square(x[:, np.newaxis, :] - self.mu).sum(axis=2) / self.sigma)  # Shape: (num_states, K)
 
-        # Find the closest centroid for each state based on the highest weight
-        closest_centroid_indices = np.argmax(gaussian_weights, axis=1)  # Shape: (num_states,)
-
-        # Assign each state to its corresponding cluster label
-        state_to_cluster = centroid_labels[closest_centroid_indices]  # Shape: (num_states,)
+        state_to_cluster = np.argmax(gaussian_weights, axis=1)  # Shape: (num_states,)
+        
+        max_weights = np.max(gaussian_weights, axis=1)
 
         transition_counts = defaultdict(lambda: defaultdict(int))
 
@@ -138,9 +152,12 @@ class Clusterer:
                 state_action_transitions_from[action],
                 state_action_transitions_to[action],
             ):
+                # Skip transition if either state has a maximum weight below the threshold
+                if max_weights[from_state] < threshold or max_weights[to_state] < threshold:
+                    continue
+
                 from_cluster = state_to_cluster[from_state]
                 to_cluster = state_to_cluster[to_state]
-
                 transition_counts[(from_cluster, action)][to_cluster] += 1
 
         clustered_transitions_from = [[] for _ in self.actions]
@@ -149,13 +166,10 @@ class Clusterer:
 
         for (from_cluster, action), to_clusters in transition_counts.items():
             total_transitions = sum(to_clusters.values())
-
             for to_cluster, count in to_clusters.items():
                 clustered_transitions_from[action].append(from_cluster)
                 clustered_transitions_to[action].append(to_cluster)
-                clustered_transition_probs[action][(from_cluster, to_cluster)] = (
-                    count / total_transitions
-                )
+                clustered_transition_probs[action][(from_cluster, to_cluster)] = count / total_transitions
 
         self.transitions_from = clustered_transitions_from
         self.transitions_to = clustered_transitions_to

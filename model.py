@@ -11,6 +11,7 @@ import matplotlib.pyplot as plt
 
 from sklearn.cluster import k_means
 from clusterer import Clusterer
+from util.cluster_visualizer import ClusterVisualizer
 
 class Model:
     def __init__(self, action_space_n, discount_factor, observation_space, K, sigma):
@@ -21,6 +22,7 @@ class Model:
             (0, obs_dim)
         )  # States are stored here
         self.rewards: np.ndarray = np.empty(0)  # Value for each state index
+        self.original_rewards = np.empty(0)
         self.reward_weights = np.ones(0)
 
         self.actions: list[int] = list(range(action_space_n))
@@ -84,6 +86,7 @@ class Model:
         print("Running k-means...")
 
         self.original_states = self.states
+        self.original_rewards = self.rewards
 
         states_array = np.array(self.states)
 
@@ -181,14 +184,23 @@ class Model:
         self.states_std = np.std(self.states, axis=0)
 
     def cluster_states(self, k, gaussian_width):
+        """ self.run_k_means(k=k)
+        self.update_transitions_and_rewards_for_clusters(gaussian_width=gaussian_width) """
+        self.original_states = self.states
+        self.original_rewards = self.rewards
+        
         print(f"Total states: {len(self.states)}")
     
         # Perform batch update instead of per-state updates
-        for i in range(10):
+        print("Running online clustering")
+        for i in range(1):
             self.clusterer.update(X=np.array(self.states), X_rewards=np.array(self.rewards))
+        print("Updating transitions")
         self.clusterer.update_transitions(x=self.states, 
                                           state_action_transitions_from=self.state_action_transitions_from,
-                                          state_action_transitions_to=self.state_action_transitions_to)
+                                          state_action_transitions_to=self.state_action_transitions_to,
+                                          threshold=1e-5)
+        
 
         # Get the updated centroids and rewards
         (new_states, new_rewards, new_transitions_from, new_transitions_to) = self.clusterer.get_model_attributes()
@@ -200,3 +212,6 @@ class Model:
         self.states_mean = np.mean(self.states, axis=0)
         self.states_std = np.std(self.states, axis=0)
         self.using_clusters = True
+
+        visualizer = ClusterVisualizer(model=self)
+        visualizer.plot_clusters()
