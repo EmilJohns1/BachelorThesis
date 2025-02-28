@@ -6,7 +6,7 @@ from scipy.special import log_softmax
 
 
 import numpy as np
-
+import copy
 import matplotlib.pyplot as plt
 
 from sklearn.cluster import k_means
@@ -30,6 +30,7 @@ class Model:
         # in which state the action was performed and the resulting state of that action
         self.state_action_transitions_from: list[list[int]] = [[] for _ in self.actions]
         self.state_action_transitions_to: list[list[int]] = [[] for _ in self.actions]
+        self.new_transitions_index = np.zeros(len(self.actions), dtype=int)
 
         self.discount_factor: float = (
             discount_factor  # Low discount factor penalizes longer episodes
@@ -181,31 +182,55 @@ class Model:
         self.states_std = np.std(self.states, axis=0)
 
     def cluster_states(self, k, gaussian_width):
-        """ self.run_k_means(k=k)
-        self.update_transitions_and_rewards_for_clusters(gaussian_width=gaussian_width) """
         self.original_states = self.states
         self.original_rewards = self.rewards
-        
         print(f"Total states: {len(self.states)}")
-    
-        # Perform batch update instead of per-state updates
+        
+        X = self.states
+        X_rewards = self.rewards
+        if self.using_clusters: # Exclude the centroids from calculations
+            X = self.states[k:]  
+            X_rewards = self.rewards[k:]
+        
         print("Running online clustering")
         for i in range(1):
-            self.clusterer.update(X=np.array(self.states), X_rewards=np.array(self.rewards))
-        print("Updating transitions")
-        self.clusterer.update_transitions(x=self.states, 
-                                          state_action_transitions_from=self.state_action_transitions_from,
-                                          state_action_transitions_to=self.state_action_transitions_to,
-                                          threshold=5e-1)
+            self.clusterer.update(X=X, X_rewards=X_rewards)
         
-
-        # Get the updated centroids and rewards
-        (new_states, new_rewards, new_transitions_from, new_transitions_to) = self.clusterer.get_model_attributes()
-
-        self.states = new_states
-        self.rewards = new_rewards
-        self.state_action_transitions_from = new_transitions_from
-        self.state_action_transitions_to = new_transitions_to
+        print("Updating transitions")
+        # For each action, slice from the stored new_transitions_index for that action,
+        # and re-index by subtracting k.
+        transitions_from_new = []
+        transitions_to_new = []
+        for i, _ in enumerate(self.actions):
+            transitions_from_new.append(
+                [x - k for x in self.state_action_transitions_from[i][self.new_transitions_index[i]:]]
+            )
+            transitions_to_new.append(
+                [x - k for x in self.state_action_transitions_to[i][self.new_transitions_index[i]:]]
+            )
+        
+        self.clusterer.update_transitions(
+            x=X, 
+            state_action_transitions_from=transitions_from_new,
+            state_action_transitions_to=transitions_to_new,
+            threshold=5e-1
+        )
+        
+        # Get the updated centroids, rewards, and transitions from the clusterer.
+        new_states, new_rewards, new_transitions_from, new_transitions_to = self.clusterer.get_model_attributes()
+        
+        self.states = copy.deepcopy(new_states)
+        self.rewards = copy.deepcopy(new_rewards)
+        self.state_action_transitions_from = copy.deepcopy(new_transitions_from)
+        self.state_action_transitions_to = copy.deepcopy(new_transitions_to)
+        
+        # Update the new_transitions_index array for each action.
+        # Each element now holds the length of the transitions list for that action.
+        new_indices = []
+        for i, _ in enumerate(self.actions):
+            new_indices.append(len(new_transitions_from[i]))
+        self.new_transitions_index = np.array(new_indices)
+        
         self.states_mean = np.mean(self.states, axis=0)
         self.states_std = np.std(self.states, axis=0)
         self.using_clusters = True

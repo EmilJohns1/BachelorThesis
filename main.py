@@ -21,7 +21,7 @@ for i in range(1):
     # These variables should be logged for each run
     environment = "CartPole-v1"
     discount_factor = 1
-    k = 4000
+    k = 7000
     gaussian_width_rewards = 0.2
     seed = random.randint(0, 2**32 - 1)
     comments = ""
@@ -84,8 +84,8 @@ for i in range(1):
                 model.cluster_states(k=k, gaussian_width=gaussian_width_rewards)
 
                 # Disable for further training after clustering
-                agent.testing = True
-                finished_training = True
+                #agent.testing = True
+                #finished_training = True
 
                 training_rewards = episode_rewards
                 episode_rewards = []
@@ -110,7 +110,7 @@ for i in range(1):
                     "training_rewards" : training_rewards,
                     "testing_rewards" : testing_rewards
                 }
-                write_to_json(data, "online_clustering_1e-2_filter")
+                write_to_json(data, "")
 
 
                 #plot_rewards(episode_rewards=episode_rewards)

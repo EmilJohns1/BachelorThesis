@@ -76,7 +76,8 @@ class Clusterer:
                 self.mu[i] += (self.learning_rate / self.sigma) * (diff_i - influence)
 
         # Update rewards using the final centroids
-        F = np.exp(-np.square(X[:, np.newaxis, :] - self.mu).sum(axis=2) / self.sigma)  # Shape: (num_states, K)
+        alpha = 3
+        F = np.power(np.exp(-np.square(X[:, np.newaxis, :] - self.mu).sum(axis=2) / self.sigma), alpha)  # Shape: (num_states, K)
         weights = F.sum(axis=0)
         mask = weights != 0
         rewards = (F * X_rewards[:, np.newaxis]).sum(axis=0)
@@ -109,17 +110,18 @@ class Clusterer:
         
         clustered_transitions_from = [[] for _ in self.actions]
         clustered_transitions_to = [[] for _ in self.actions]
-        clustered_transition_probs = [{} for _ in self.actions]
 
         for (from_cluster, action), to_clusters in transition_counts.items():
             total_transitions = sum(to_clusters.values())
             for to_cluster, count in to_clusters.items():
                 clustered_transitions_from[action].append(from_cluster)
                 clustered_transitions_to[action].append(to_cluster)
-                clustered_transition_probs[action][(from_cluster, to_cluster)] = count / total_transitions
 
-        self.transitions_from = clustered_transitions_from
-        self.transitions_to = clustered_transitions_to
+        for action in self.actions:
+            self.transitions_from[action].extend(clustered_transitions_from[action])
+            self.transitions_to[action].extend(clustered_transitions_to[action])
+
+        print(f"Max rewards: {np.max(self.cluster_rewards)}")
 
     def get_model_attributes(self):
         return (self.mu, self.cluster_rewards, self.transitions_from, self.transitions_to)
