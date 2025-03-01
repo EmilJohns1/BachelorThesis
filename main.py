@@ -7,6 +7,7 @@ from model import Model
 from util.cluster_visualizer import ClusterVisualizer
 from util.logger import write_to_json
 from util.reward_visualizer import plot_rewards, plot_multiple_runs
+from util.clustering_alg import Clustering_Type
 
 import numpy as np
 for i in range(100):
@@ -75,7 +76,7 @@ for i in range(100):
                 end = time.time()
                 print("Time :{}".format(end-start))
 
-                model.cluster_states(k=k, gaussian_width=gaussian_width_rewards)
+                model.cluster_states(k=k, gaussian_width=gaussian_width_rewards, cluster_type=Clustering_Type.K_Means)
 
                 # Disable for further training after clustering
                 agent.testing = True

@@ -12,6 +12,7 @@ import matplotlib.pyplot as plt
 from sklearn.cluster import k_means
 from clusterer import Clusterer
 from util.cluster_visualizer import ClusterVisualizer
+from util.clustering_alg import Clustering_Type
 
 class Model:
     def __init__(self, action_space_n, discount_factor, observation_space, K, sigma):
@@ -181,7 +182,7 @@ class Model:
         self.states_mean = np.mean(self.states, axis=0)
         self.states_std = np.std(self.states, axis=0)
 
-    def cluster_states(self, k, gaussian_width):
+    def run_online_clustering(self, k, gaussian_width):
         self.original_states = self.states
         self.original_rewards = self.rewards
         print(f"Total states: {len(self.states)}")
@@ -235,5 +236,9 @@ class Model:
         self.states_std = np.std(self.states, axis=0)
         self.using_clusters = True
 
-        #visualizer = ClusterVisualizer(model=self)
-        #visualizer.plot_clusters()
+
+    def cluster_states(self, k, gaussian_width, cluster_type):
+        if cluster_type is Clustering_Type.K_Means:
+            self.run_k_means(k=k)
+        elif cluster_type is Clustering_Type.Online_Clustering:
+            self.run_online_clustering(k=k, gaussian_width=gaussian_width)
