@@ -8,21 +8,15 @@ from util.cluster_visualizer import ClusterVisualizer
 from util.logger import write_to_json
 from util.reward_visualizer import plot_rewards, plot_multiple_runs
 
-""" plot_multiple_runs(folder_name="logs/online_clustering_1e-2_filter", title="1e-2", field="testing_rewards", block=False)
-plot_multiple_runs(folder_name="logs/online_clustering_8e-1_filter", title="8e-1", field="testing_rewards", block=False)
-plot_multiple_runs(folder_name="logs/online_clustering_5e-1_filter", title="5e-1", field="testing_rewards", block=False)
-plot_multiple_runs(folder_name="logs/online_clustering_2e-1_filter", title="2e-1", field="testing_rewards", block=False)
-plot_multiple_runs(folder_name="logs/weighted_online_clustering", title="1e-1", field="testing_rewards")
- """
 import numpy as np
-for i in range(1):
+for i in range(100):
     print("--- Starting new run ---")
     #################################################
     # These variables should be logged for each run
     environment = "CartPole-v1"
     discount_factor = 1
-    k = 7000
-    gaussian_width_rewards = 0.2
+    k = 4000
+    gaussian_width_rewards = 0.1
     seed = random.randint(0, 2**32 - 1)
     comments = ""
     training_time = 100
@@ -84,8 +78,8 @@ for i in range(1):
                 model.cluster_states(k=k, gaussian_width=gaussian_width_rewards)
 
                 # Disable for further training after clustering
-                #agent.testing = True
-                #finished_training = True
+                agent.testing = True
+                finished_training = True
 
                 training_rewards = episode_rewards
                 episode_rewards = []
@@ -110,7 +104,7 @@ for i in range(1):
                     "training_rewards" : training_rewards,
                     "testing_rewards" : testing_rewards
                 }
-                write_to_json(data, "")
+                write_to_json(data, "filter_for_rewards")
 
 
                 #plot_rewards(episode_rewards=episode_rewards)
