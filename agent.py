@@ -1,3 +1,5 @@
+import gymnasium as gym
+
 import numpy as np
 
 
@@ -51,13 +53,17 @@ class Agent:
         return action_rewards, action_weights
 
     def get_action(self, action_rewards, action_weights):
-        for action in self.model.actions:
+        if isinstance(self.model.actions, list):
             if self.testing:
                 return np.argmax(action_rewards)
-            if action_weights[action] == 0:
-                return action  # Return action that has never been chosen before
-            if action_weights[action] / np.max(action_weights) < self.exploration_rate:
-                return (
-                    action  # Return action that has little data for the current state
-                )
-        return np.argmax(action_rewards)
+            if np.any(action_weights == 0): 
+                return np.random.choice(self.model.actions[np.where(action_weights == 0)[0]])
+            if np.random.rand() < self.exploration_rate:
+                return np.random.choice(self.model.actions)
+            return np.argmax(action_rewards)
+
+        if isinstance(self.model.actions, gym.spaces.Box):
+            action_dim = self.model.actions.shape[0]
+            return np.random.uniform(
+                self.model.actions.low, self.model.actions.high, size=action_dim
+            )

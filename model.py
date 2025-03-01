@@ -1,24 +1,44 @@
 from collections import defaultdict
+import gymnasium as gym
+from gymnasium.spaces import Box, Discrete
 from scipy.cluster.vq import kmeans2
 from scipy.cluster.vq import vq
 from scipy.cluster.vq import whiten
 from scipy.special import log_softmax
 
-
 import numpy as np
 import copy
 import matplotlib.pyplot as plt
 
+from sklearn.cluster import KMeans
+from sklearn.cluster import MiniBatchKMeans
 from sklearn.cluster import k_means
 from clusterer import Clusterer
 from util.cluster_visualizer import ClusterVisualizer
 from util.clustering_alg import Clustering_Type
 
 class Model:
-    def __init__(self, action_space_n, discount_factor, observation_space, K, sigma):
-        obs_dim = observation_space.shape[0]
+    def __init__(
+        self,
+        action_space_n,
+        discount_factor,
+        observation_space,
+        k,
+        sigma,
+        find_k=False,
+        lower_k=None,
+        upper_k=None,
+        step=500,
+    ):
+        if isinstance(observation_space, gym.spaces.box.Box):
+            obs_dim = observation_space.shape[0]
+        elif isinstance(observation_space, gym.spaces.discrete.Discrete):
+            obs_dim = 1
+        else:
+            raise ValueError("Unsupported observation space type!")
+        
         self.states: np.ndarray = np.empty((0, obs_dim))  # States are stored here
-        self.clusterer = Clusterer(K=K, D=obs_dim, sigma=sigma, lambda_=0.5, learning_rate=0.02, action_space_n=action_space_n)
+        self.clusterer = Clusterer(K=k, D=obs_dim, sigma=sigma, lambda_=0.5, learning_rate=0.02, action_space_n=action_space_n)
         self.original_states: np.ndarray = np.empty(
             (0, obs_dim)
         )  # States are stored here
@@ -39,6 +59,11 @@ class Model:
         self.states_mean = np.zeros(obs_dim)
         self.M2 = np.zeros(obs_dim)
         self.states_std = np.ones(obs_dim)
+        self.k = k
+        self.find_k = find_k
+        self.lower_k = lower_k
+        self.upper_k = upper_k
+        self.step = step
 
         self.using_clusters = False
 
@@ -71,11 +96,12 @@ class Model:
 
     def scale_rewards(self, log_softmaxed_rewards, new_min=0.01, new_max=100.0):
         print("Shifting rewards...")
+        print(log_softmaxed_rewards)
 
         rewards = np.array(log_softmaxed_rewards)
         max_reward = np.max(rewards)
 
-        if np.all(rewards == max_reward):  
+        if np.all(rewards == max_reward):
             print("Rewards have no variation, shifting skipped.")
             return rewards
 
@@ -89,27 +115,91 @@ class Model:
         scaled_rewards = self.scale_rewards(log_softmaxed_rewards=log_softmax_rewards, new_max=3)
         return np.exp(scaled_rewards)
 
-    def run_k_means(self, k):
-        print("Running k-means...")
+    def find_optimal_k(self, states, rewards):
+        """
+        Uses the elbow method and second derivative to find the optimal k.
 
+        Parameters:
+            states (np.array): Array of states.
+            rewards (np.array): Array of rewards (used as weights).
+            k_range (tuple): Range of k values to try.
+
+        Returns:
+            optimal_k (int): Best value of k based on the elbow method.
+        """
+
+        k_min = max(1, int(self.lower_k))
+        k_max = max(k_min, int(self.upper_k))
+        step = self.step
+
+        k_values = range(k_min, k_max + 1, step)
+        print(k_values)
+
+        print(f"Trying k values: {k_values}...")
+        inertia_values = []
+
+        for k in k_values:
+            print(k)
+            kmeans = MiniBatchKMeans(
+                n_clusters=k, random_state=42, n_init=10, batch_size=1000
+            )
+            kmeans.fit(states, sample_weight=rewards)
+            inertia = kmeans.inertia_
+            inertia_values.append(inertia)
+
+        first_derivative = np.diff(inertia_values)
+
+        second_derivative = np.diff(first_derivative)
+
+        k_temp = k_values[np.argmin(second_derivative) + 1]
+        optimal_k = np.max([k_temp, 1])
+
+        plt.figure(figsize=(10, 5))
+        plt.plot(k_values, inertia_values, marker="o", label="Inertia")
+        plt.xlabel("Number of Clusters (k)")
+        plt.ylabel("Inertia")
+        plt.title("Elbow Method for Optimal k")
+        plt.axvline(
+            optimal_k, color="r", linestyle="--", label=f"Optimal k = {optimal_k}"
+        )
+        plt.legend()
+        plt.show()
+
+        return optimal_k
+
+    def run_k_means(self):
+        print("Running k-means...")
         self.original_states = self.states
         self.original_rewards = self.rewards
 
-        states_array = np.array(self.states)
-
+        states_array = self.states
         new_rewards = self.scaled_log_softmax()
         
         if np.any(new_rewards == 0):
             print("Warning: Zero values detected in new_rewards!")
             print("Indices with zero values:", np.where(new_rewards == 0))
 
+
+        if self.find_k:
+            print("Running elbow method")
+            self.k = self.find_optimal_k(states_array, new_rewards)
+
         centroids, labels, inertia = k_means(
-            X=states_array, n_clusters=k, sample_weight=new_rewards
+            X=states_array, n_clusters=self.k, sample_weight=new_rewards
         )
 
         self.clustered_states = centroids
         self.cluster_labels = labels
-    
+
+        # Kan bruke det nedenfor også, men bruker mye lenger tid grunnet n_init, og presterer ikke merkbart bedre.
+        # Må testes mer på bedre PC med forskjellige verdier for n_init.
+
+        # k_means = KMeans(n_clusters=optimal_k, random_state=42, n_init=10)
+        # k_means.fit(states_array, sample_weight=new_rewards)
+
+        # self.clustered_states = k_means.cluster_centers_
+        # self.cluster_labels = k_means.labels_
+
     def update_transitions_and_rewards_for_clusters(self, gaussian_width=0.2):
         state_to_cluster = {i: self.cluster_labels[i] for i in range(len(self.states))}
 
@@ -143,7 +233,7 @@ class Model:
         self.state_action_transitions_to = clustered_transitions_to
         self.transition_probs = clustered_transition_probs
 
-         # Initialize rewards for clusters
+        # Initialize rewards for clusters
         num_clusters = len(self.clustered_states)
         cluster_rewards = np.zeros(num_clusters)
         cluster_weights = np.zeros(num_clusters)  # Sum of weights for normalization
