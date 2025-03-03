@@ -41,9 +41,10 @@ def train_model_based_agent(
         )
         model = Model(
             action_space_n=env_manager.env.action_space.n,
-            _discount_factor=discount_factor,
+            discount_factor=discount_factor,
             observation_space=env_manager.env.observation_space,
             k=k,
+            sigma=gaussian_width_rewards,
             find_k=find_k,
             lower_k=lower_k,
             upper_k=upper_k,

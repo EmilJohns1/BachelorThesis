@@ -1,28 +1,30 @@
 from collections import defaultdict
 import gymnasium as gym
-from gym.spaces import Box
-from gym.spaces import Discrete
+from gymnasium.spaces import Box, Discrete
 from scipy.cluster.vq import kmeans2
 from scipy.cluster.vq import vq
 from scipy.cluster.vq import whiten
 from scipy.special import log_softmax
 
 import numpy as np
-
+import copy
 import matplotlib.pyplot as plt
 
 from sklearn.cluster import KMeans
 from sklearn.cluster import MiniBatchKMeans
 from sklearn.cluster import k_means
-
+from clusterer import Clusterer
+from util.cluster_visualizer import ClusterVisualizer
+from util.clustering_alg import Clustering_Type
 
 class Model:
     def __init__(
         self,
         action_space_n,
-        _discount_factor,
+        discount_factor,
         observation_space,
         k,
+        sigma,
         find_k=False,
         lower_k=None,
         upper_k=None,
@@ -34,12 +36,14 @@ class Model:
             obs_dim = 1
         else:
             raise ValueError("Unsupported observation space type!")
-
+        
         self.states: np.ndarray = np.empty((0, obs_dim))  # States are stored here
+        self.clusterer = Clusterer(K=k, D=obs_dim, sigma=sigma, lambda_=0.5, learning_rate=0.02, action_space_n=action_space_n)
         self.original_states: np.ndarray = np.empty(
             (0, obs_dim)
         )  # States are stored here
         self.rewards: np.ndarray = np.empty(0)  # Value for each state index
+        self.original_rewards = np.empty(0)
         self.reward_weights = np.ones(0)
 
         self.actions: list[int] = list(range(action_space_n))
@@ -47,9 +51,10 @@ class Model:
         # in which state the action was performed and the resulting state of that action
         self.state_action_transitions_from: list[list[int]] = [[] for _ in self.actions]
         self.state_action_transitions_to: list[list[int]] = [[] for _ in self.actions]
+        self.new_transitions_index = np.zeros(len(self.actions), dtype=int)
 
         self.discount_factor: float = (
-            _discount_factor  # Low discount factor penalizes longer episodes
+            discount_factor  # Low discount factor penalizes longer episodes
         )
         self.states_mean = np.zeros(obs_dim)
         self.M2 = np.zeros(obs_dim)
@@ -59,6 +64,8 @@ class Model:
         self.lower_k = lower_k
         self.upper_k = upper_k
         self.step = step
+
+        self.using_clusters = False
 
     def update_model(self, states, actions, rewards):
         for i, state in enumerate(states):
@@ -102,6 +109,11 @@ class Model:
         shifted_rewards = rewards + (new_max - max_reward)
 
         return shifted_rewards
+    
+    def scaled_log_softmax(self):
+        log_softmax_rewards = log_softmax(self.rewards)
+        scaled_rewards = self.scale_rewards(log_softmaxed_rewards=log_softmax_rewards, new_max=3)
+        return np.exp(scaled_rewards)
 
     def find_optimal_k(self, states, rewards):
         """
@@ -156,18 +168,20 @@ class Model:
         return optimal_k
 
     def run_k_means(self):
-        print("Running k-means elbow method...")
+        print("Running k-means...")
         self.original_states = self.states
+        self.original_rewards = self.rewards
 
         states_array = self.states
+        new_rewards = self.scaled_log_softmax()
+        
+        if np.any(new_rewards == 0):
+            print("Warning: Zero values detected in new_rewards!")
+            print("Indices with zero values:", np.where(new_rewards == 0))
 
-        log_softmax_rewards = log_softmax(self.rewards)
-        scaled_rewards = self.scale_rewards(
-            log_softmax_rewards, new_min=-40, new_max=15
-        )
-        new_rewards = np.exp(scaled_rewards)
 
         if self.find_k:
+            print("Running elbow method")
             self.k = self.find_optimal_k(states_array, new_rewards)
 
         centroids, labels, inertia = k_means(
@@ -257,3 +271,64 @@ class Model:
         self.states = self.clustered_states
         self.states_mean = np.mean(self.states, axis=0)
         self.states_std = np.std(self.states, axis=0)
+
+    def run_online_clustering(self, k, gaussian_width):
+        self.original_states = self.states
+        self.original_rewards = self.rewards
+        print(f"Total states: {len(self.states)}")
+        
+        X = self.states
+        X_rewards = self.rewards
+        if self.using_clusters: # Exclude the centroids from calculations
+            X = self.states[k:]  
+            X_rewards = self.rewards[k:]
+        
+        print("Running online clustering")
+        for i in range(1):
+            self.clusterer.update(X=X, X_rewards=X_rewards)
+        
+        print("Updating transitions")
+        # For each action, slice from the stored new_transitions_index for that action,
+        # and re-index by subtracting k.
+        transitions_from_new = []
+        transitions_to_new = []
+        for i, _ in enumerate(self.actions):
+            transitions_from_new.append(
+                [x - k for x in self.state_action_transitions_from[i][self.new_transitions_index[i]:]]
+            )
+            transitions_to_new.append(
+                [x - k for x in self.state_action_transitions_to[i][self.new_transitions_index[i]:]]
+            )
+        
+        self.clusterer.update_transitions(
+            x=X, 
+            state_action_transitions_from=transitions_from_new,
+            state_action_transitions_to=transitions_to_new,
+            threshold=5e-1
+        )
+        
+        # Get the updated centroids, rewards, and transitions from the clusterer.
+        new_states, new_rewards, new_transitions_from, new_transitions_to = self.clusterer.get_model_attributes()
+        
+        self.states = copy.deepcopy(new_states)
+        self.rewards = copy.deepcopy(new_rewards)
+        self.state_action_transitions_from = copy.deepcopy(new_transitions_from)
+        self.state_action_transitions_to = copy.deepcopy(new_transitions_to)
+        
+        # Update the new_transitions_index array for each action.
+        # Each element now holds the length of the transitions list for that action.
+        new_indices = []
+        for i, _ in enumerate(self.actions):
+            new_indices.append(len(new_transitions_from[i]))
+        self.new_transitions_index = np.array(new_indices)
+        
+        self.states_mean = np.mean(self.states, axis=0)
+        self.states_std = np.std(self.states, axis=0)
+        self.using_clusters = True
+
+
+    def cluster_states(self, k, gaussian_width, cluster_type):
+        if cluster_type is Clustering_Type.K_Means:
+            self.run_k_means(k=k)
+        elif cluster_type is Clustering_Type.Online_Clustering:
+            self.run_online_clustering(k=k, gaussian_width=gaussian_width)

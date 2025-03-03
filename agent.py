@@ -1,16 +1,16 @@
-import gym
+import gymnasium as gym
 
 import numpy as np
 
 
 class Agent:
     def __init__(
-        self, model, gaussian_width=0.3, exploration_rate=0.1, use_clusters=False
+        self, model, gaussian_width=0.3, exploration_rate=0.1
     ):
         self.model = model
         self.gaussian_width = gaussian_width
         self.exploration_rate = exploration_rate
-        self.use_clusters = use_clusters
+        self.testing = False
 
     def normalize_states(self):
         states_mean = np.array([0.0, 0.0, 0.0, 0.0])
@@ -54,10 +54,10 @@ class Agent:
 
     def get_action(self, action_rewards, action_weights):
         if isinstance(self.model.actions, list):
-            if self.use_clusters:
+            if self.testing:
                 return np.argmax(action_rewards)
-            if np.any(action_weights == 0):
-                return np.random.choice(self.model.actions)
+            if np.any(action_weights == 0): 
+                return np.random.choice(self.model.actions[np.where(action_weights == 0)[0]])
             if np.random.rand() < self.exploration_rate:
                 return np.random.choice(self.model.actions)
             return np.argmax(action_rewards)

@@ -1,7 +1,6 @@
 import argparse
 from train_model_based import train_model_based_agent
 
-
 def main(args):
     # if args.agent == "q-learning":
     #     train_q_learning(args.env)
@@ -57,6 +56,5 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
     main(args)
-
 # Run by executing etc: python main.py --agent model-based --env CartPole-v1 --training_time 100 --show_clusters_and_rewards --find_optimal_k 15000 25000 500
 # Simple run: python main.py --agent model-based --env CartPole-v1 --training_time 100
