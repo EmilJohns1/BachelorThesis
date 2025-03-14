@@ -95,9 +95,6 @@ class Model:
         self.states_std = np.sqrt(self.M2 / n)  # Compute standard deviation
 
     def scale_rewards(self, log_softmaxed_rewards, new_min=0.01, new_max=100.0):
-        print("Shifting rewards...")
-        print(log_softmaxed_rewards)
-
         rewards = np.array(log_softmaxed_rewards)
         max_reward = np.max(rewards)
 
@@ -199,6 +196,8 @@ class Model:
 
         # self.clustered_states = k_means.cluster_centers_
         # self.cluster_labels = k_means.labels_
+
+        print("K-Means clustering completed")
 
     def update_transitions_and_rewards_for_clusters(self, gaussian_width=0.2):
         state_to_cluster = {i: self.cluster_labels[i] for i in range(len(self.states))}
@@ -329,6 +328,6 @@ class Model:
 
     def cluster_states(self, k, gaussian_width, cluster_type):
         if cluster_type is Clustering_Type.K_Means:
-            self.run_k_means(k=k)
+            self.run_k_means()
         elif cluster_type is Clustering_Type.Online_Clustering:
             self.run_online_clustering(k=k, gaussian_width=gaussian_width)
