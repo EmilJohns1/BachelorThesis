@@ -11,6 +11,7 @@ import numpy as np
 from util.cluster_visualizer import ClusterVisualizer
 from util.logger import write_to_json
 from util.reward_visualizer import plot_rewards
+from util.clustering_alg import Clustering_Type
 
 
 def train_model_based_agent(
@@ -94,12 +95,9 @@ def train_model_based_agent(
                     end = time.time()
                     print("Time :{}".format(end - start))
 
-                    model.run_k_means()
-                    model.update_transitions_and_rewards_for_clusters(
-                        gaussian_width=gaussian_width_rewards
-                    )
+                    model.cluster_states(k=k, gaussian_width=gaussian_width_rewards, cluster_type=Clustering_Type.K_Means)
 
-                    agent.use_clusters = True
+                    agent.training = True
 
                     if show_clusters_and_rewards:
                         plot_rewards(episode_rewards=episode_rewards)
