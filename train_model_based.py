@@ -17,7 +17,8 @@ from util.clustering_alg import Clustering_Type
 def train_model_based_agent(
     env_name, training_time, show_clusters_and_rewards, find_k, lower_k, upper_k, step
 ):
-    for i in range(20):
+    for i in range(100):
+        print("--- Starting new run ---")
         #################################################
         # These variables should be logged for each run
         environment = env_name if env_name else "CartPole-v1"
@@ -95,7 +96,7 @@ def train_model_based_agent(
                     end = time.time()
                     print("Time :{}".format(end - start))
 
-                    model.cluster_states(k=k, gaussian_width=gaussian_width_rewards, cluster_type=Clustering_Type.K_Means)
+                    #model.cluster_states(k=k, gaussian_width=gaussian_width_rewards, cluster_type=Clustering_Type.K_Means)
 
                     agent.training = True
 
@@ -112,9 +113,9 @@ def train_model_based_agent(
                     episodes = -1
                     finished_training = True
 
-                    env_manager = EnvironmentManager(
-                        render_mode="human", environment=environment, seed=testing_seed
-                    )
+                    #env_manager = EnvironmentManager(
+                    #    render_mode="human", environment=environment, seed=testing_seed
+                    #)
 
                 elif episodes < training_time and not finished_training:
                     model.update_model(states, actions, rewards)
@@ -136,7 +137,7 @@ def train_model_based_agent(
                         "training_rewards": training_rewards,
                         "testing_rewards": testing_rewards,
                     }
-                    write_to_json(data)
+                    write_to_json(data, "delta_variant_100ep")
 
                     if show_clusters_and_rewards:
                         plot_rewards(episode_rewards=episode_rewards)

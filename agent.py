@@ -2,6 +2,8 @@ import gymnasium as gym
 
 import numpy as np
 
+import time
+
 
 class Agent:
     def __init__(
@@ -26,48 +28,64 @@ class Agent:
         return states_mean, states_std
 
     def compute_action_rewards(self, state, states_mean, states_std):
-        action_rewards = [0.0 for _ in self.model.actions]
-        action_weights = [0.0 for _ in self.model.actions]
+        action_rewards = np.zeros(len(self.model.actions))  # Use NumPy for speed
+        action_weights = np.zeros(len(self.model.actions))
 
         for action in self.model.actions:
-            if len(self.model.state_action_transitions[action]) > 0:
-                states, deltas = zip(*self.model.state_action_transitions[action])
-                states = np.array(states)
-                deltas = np.array(deltas)
-                dist = (state - states_mean) / states_std - (
-                    self.model.states[states]
-                    - states_mean
-                ) / states_std
-                weight = np.exp(-np.sum(np.square(dist), axis=1) / self.gaussian_width)
-                
-                estimated_delta = ((
-                    np.sum(weight[:, None] * deltas, axis=0)
-                    / np.sum(weight)
-                ) - states_mean) / states_std
+            if len(self.model.state_action_transitions_from[action]) > 0:
+                states = self.model.state_action_transitions_from[action]
+                deltas = self.model.transition_delta[action]
 
-                predicted_state = state + estimated_delta
-                dist = (predicted_state - states_mean)/states_std - (self.model.states[states] - states_mean)/states_std
-                weight = np.exp(-np.sum(np.square(dist), axis=1) / self.gaussian_width)
-                action_weights[action] = np.sum(weight)
-                action_rewards[action] = np.sum(weight*self.model.rewards[states])/action_weights[action]
-                print(f"act rew: {action_rewards[action]}")
+                # Precompute normalized state and states
+                norm_state = (state - states_mean) / states_std
+                norm_states = (self.model.states[states] - states_mean) / states_std
 
-                #action_rewards[action] = np.exp(-np.sum(np.square(estimated_delta)) / self.gaussian_width) * estimated_reward # Vil alltid føre til at rewarden blir predikert å bli lavere
-                
+                # Compute distance
+                dist = norm_state - norm_states
+                dist_sq = np.square(dist)
+
+                # Compute initial weight
+                weight = np.exp(-np.sum(dist_sq, axis=1) / self.gaussian_width)
+
+                # Precompute weight sum for efficiency
+                sum_weight = np.sum(weight)
+                if sum_weight == 0:
+                    sum_weight = 1e-8  # Avoid division by zero
+
+                # Compute estimated delta efficiently
+                estimated_delta = np.sum(weight[:, None] * deltas, axis=0) / (sum_weight * states_std)
+
+                # Compute weight adjustment efficiently
+                estimated_delta_sq = np.sum(np.square(estimated_delta))
+                weight_adjustment = -(2 * np.sum(dist * estimated_delta, axis=1) + estimated_delta_sq) / self.gaussian_width
+
+                # Clip exponent to avoid overflow
+                weight_adjustment = np.clip(weight_adjustment, -50, 50)
+
+                # Apply adjustment
+                weight *= np.exp(weight_adjustment)
+
+                # Compute action weights and rewards
+                sum_weight = np.sum(weight)  # Reuse variable
+                if sum_weight > 1e-8:
+                    action_weights[action] = sum_weight
+                    action_rewards[action] = np.sum(weight * self.model.rewards[states]) / sum_weight
+
         return action_rewards, action_weights
 
     def get_action(self, action_rewards, action_weights):
+        actions_array = np.array(self.model.actions)
         if isinstance(self.model.actions, list):
             if self.testing:
                 return np.argmax(action_rewards)
             if np.any(action_weights == 0): 
-                return np.random.choice(self.model.actions[np.where(action_weights == 0)[0]])
+                return np.random.choice(actions_array[np.where(action_weights == 0)[0]])
             if np.random.rand() < self.exploration_rate:
-                return np.random.choice(self.model.actions)
+                return np.random.choice(actions_array)
             return np.argmax(action_rewards)
 
-        if isinstance(self.model.actions, gym.spaces.Box):
-            action_dim = self.model.actions.shape[0]
+        if isinstance(actions_array, gym.spaces.Box):
+            action_dim = actions_array.shape[0]
             return np.random.uniform(
-                self.model.actions.low, self.model.actions.high, size=action_dim
+                actions_array.low, actions_array.high, size=action_dim
             )

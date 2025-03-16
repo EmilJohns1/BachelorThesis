@@ -49,7 +49,8 @@ class Model:
         self.actions: list[int] = list(range(action_space_n))
         # List containing tuples of states and the change in state that occurred for a given action. 
         # Creates a list for each action, so indexing this give a list of tuples for that action. 
-        self.state_action_transitions = [[] for _ in range(action_space_n)]
+        self.state_action_transitions_from = [[] for _ in range(action_space_n)]
+        self.transition_delta = [[] for _ in range(action_space_n)]
         
         self.new_transitions_index = np.zeros(len(self.actions), dtype=int)
 
@@ -79,7 +80,8 @@ class Model:
             if i > 0:
                 prev_state = len(self.states) - 2
                 current_state = len(self.states) - 1
-                self.state_action_transitions[actions[i-1]].append( (prev_state, self.states[current_state] - self.states[prev_state]) )
+                self.state_action_transitions_from[actions[i-1]].append(prev_state)
+                self.transition_delta[actions[i-1]].append(self.states[current_state] - self.states[prev_state])
 
     def add_state(self, new_state):
         self.states = np.vstack((self.states, new_state))
