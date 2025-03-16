@@ -47,10 +47,10 @@ class Model:
         self.reward_weights = np.ones(0)
 
         self.actions: list[int] = list(range(action_space_n))
-        # Lists for each action containing from and to state indices, i.e.
-        # in which state the action was performed and the resulting state of that action
-        self.state_action_transitions_from: list[list[int]] = [[] for _ in self.actions]
-        self.state_action_transitions_to: list[list[int]] = [[] for _ in self.actions]
+        # List containing tuples of states and the change in state that occurred for a given action. 
+        # Creates a list for each action, so indexing this give a list of tuples for that action. 
+        self.state_action_transitions = [[] for _ in range(action_space_n)]
+        
         self.new_transitions_index = np.zeros(len(self.actions), dtype=int)
 
         self.discount_factor: float = (
@@ -77,12 +77,9 @@ class Model:
                 )
             )
             if i > 0:
-                self.state_action_transitions_from[actions[i - 1]].append(
-                    len(self.states) - 2
-                )
-                self.state_action_transitions_to[actions[i - 1]].append(
-                    len(self.states) - 1
-                )
+                prev_state = len(self.states) - 2
+                current_state = len(self.states) - 1
+                self.state_action_transitions[actions[i-1]].append( (prev_state, self.states[current_state] - self.states[prev_state]) )
 
     def add_state(self, new_state):
         self.states = np.vstack((self.states, new_state))

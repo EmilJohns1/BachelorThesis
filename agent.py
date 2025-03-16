@@ -29,27 +29,31 @@ class Agent:
         action_rewards = [0.0 for _ in self.model.actions]
         action_weights = [0.0 for _ in self.model.actions]
 
-        # Ensure transitions refer to valid cluster indices
         for action in self.model.actions:
-            if len(self.model.state_action_transitions_from[action]) > 0:
+            if len(self.model.state_action_transitions[action]) > 0:
+                states, deltas = zip(*self.model.state_action_transitions[action])
+                states = np.array(states)
+                deltas = np.array(deltas)
                 dist = (state - states_mean) / states_std - (
-                    self.model.states[self.model.state_action_transitions_from[action]]
+                    self.model.states[states]
                     - states_mean
                 ) / states_std
                 weight = np.exp(-np.sum(np.square(dist), axis=1) / self.gaussian_width)
+                
+                estimated_delta = ((
+                    np.sum(weight[:, None] * deltas, axis=0)
+                    / np.sum(weight)
+                ) - states_mean) / states_std
+
+                predicted_state = state + estimated_delta
+                dist = (predicted_state - states_mean)/states_std - (self.model.states[states] - states_mean)/states_std
+                weight = np.exp(-np.sum(np.square(dist), axis=1) / self.gaussian_width)
                 action_weights[action] = np.sum(weight)
-                action_rewards[action] = (
-                    np.sum(
-                        weight
-                        * self.model.rewards[
-                            np.array(
-                                self.model.state_action_transitions_to[action],
-                                dtype=int,
-                            )  # Ensure it's an integer array
-                        ]
-                    )
-                    / action_weights[action]
-                )
+                action_rewards[action] = np.sum(weight*self.model.rewards[states])/action_weights[action]
+                print(f"act rew: {action_rewards[action]}")
+
+                #action_rewards[action] = np.exp(-np.sum(np.square(estimated_delta)) / self.gaussian_width) * estimated_reward # Vil alltid føre til at rewarden blir predikert å bli lavere
+                
         return action_rewards, action_weights
 
     def get_action(self, action_rewards, action_weights):
