@@ -2,7 +2,6 @@ import argparse
 from train_model_based import train_model_based_agent
 from util.reward_visualizer import plot_multiple_runs
 
-plot_multiple_runs(folder_name="logs/delta_variant_100ep", title="a", field="testing_rewards")
 def main(args):
     # if args.agent == "q-learning":
     #     train_q_learning(args.env)

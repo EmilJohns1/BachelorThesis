@@ -137,7 +137,7 @@ def train_model_based_agent(
                         "training_rewards": training_rewards,
                         "testing_rewards": testing_rewards,
                     }
-                    write_to_json(data, "delta_variant_100ep")
+                    write_to_json(data, "delta_splines_cubic")
 
                     if show_clusters_and_rewards:
                         plot_rewards(episode_rewards=episode_rewards)

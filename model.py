@@ -1,10 +1,7 @@
 from collections import defaultdict
 import gymnasium as gym
-from gymnasium.spaces import Box, Discrete
-from scipy.cluster.vq import kmeans2
-from scipy.cluster.vq import vq
-from scipy.cluster.vq import whiten
 from scipy.special import log_softmax
+from scipy.interpolate import RBFInterpolator
 
 import numpy as np
 import copy
@@ -37,6 +34,7 @@ class Model:
         else:
             raise ValueError("Unsupported observation space type!")
         
+        self.state_dimensions = obs_dim
         self.states: np.ndarray = np.empty((0, obs_dim))  # States are stored here
         self.clusterer = Clusterer(K=k, D=obs_dim, sigma=sigma, lambda_=0.5, learning_rate=0.02, action_space_n=action_space_n)
         self.original_states: np.ndarray = np.empty(
@@ -51,6 +49,7 @@ class Model:
         # Creates a list for each action, so indexing this give a list of tuples for that action. 
         self.state_action_transitions_from = [[] for _ in range(action_space_n)]
         self.transition_delta = [[] for _ in range(action_space_n)]
+        self.delta_splines = [0] * len(self.actions)
         
         self.new_transitions_index = np.zeros(len(self.actions), dtype=int)
 
@@ -82,6 +81,10 @@ class Model:
                 current_state = len(self.states) - 1
                 self.state_action_transitions_from[actions[i-1]].append(prev_state)
                 self.transition_delta[actions[i-1]].append(self.states[current_state] - self.states[prev_state])
+        for action in self.actions:
+            from_states = self.states[self.state_action_transitions_from[action]]
+            deltas = self.transition_delta[action]
+            self.delta_splines[action] = RBFInterpolator(from_states, deltas, kernel="cubic")
 
     def add_state(self, new_state):
         self.states = np.vstack((self.states, new_state))
