@@ -209,39 +209,31 @@ class Model:
         print("K-Means clustering completed")
 
     def update_transitions_and_rewards_for_clusters(self, gaussian_width=0.2):
-        state_to_cluster = {i: self.cluster_labels[i] for i in range(len(self.states))}
+        assert self.k == len(self.cluster_states)
+        cluster_transitions_from = [[i for i in range(self.k)] for _ in range(len(self.actions))]
+        cluster_transitions_to = [[np.zeros(self.state_dimensions) for _ in range(self.k)] for _ in range(len(self.actions))]
+        cluster_deltas = [[np.zeros(self.state_dimensions) for _ in range(self.k)] for _ in range(len(self.actions))]
 
-        transition_counts = defaultdict(lambda: defaultdict(int))
+        for i, centroid in enumerate(self.cluster_states):
+            # Get the states belonging to centroid i
+            cluster_indices = np.where(self.cluster_labels == i)[
+                0
+            ] 
+            for action in self.actions:
+                # Get the states that are present in transition_from for this action
+                valid_indices = np.intersect1d(cluster_indices, self.state_action_transitions_from[action])
+                cluster_states = states_array[valid_indices]
 
-        for action in self.actions:
-            for from_state, to_state in zip(
-                self.state_action_transitions_from[action],
-                self.state_action_transitions_to[action],
-            ):
-                from_cluster = state_to_cluster[from_state]
-                to_cluster = state_to_cluster[to_state]
-
-                transition_counts[(from_cluster, action)][to_cluster] += 1
-
-        clustered_transitions_from = [[] for _ in self.actions]
-        clustered_transitions_to = [[] for _ in self.actions]
-        clustered_transition_probs = [{} for _ in self.actions]
-
-        for (from_cluster, action), to_clusters in transition_counts.items():
-            total_transitions = sum(to_clusters.values())
-
-            for to_cluster, count in to_clusters.items():
-                clustered_transitions_from[action].append(from_cluster)
-                clustered_transitions_to[action].append(to_cluster)
-                clustered_transition_probs[action][(from_cluster, to_cluster)] = (
-                    count / total_transitions
-                )
-
-        self.state_action_transitions_from = clustered_transitions_from
-        self.state_action_transitions_to = clustered_transitions_to
-        self.transition_probs = clustered_transition_probs
-
-        # Initialize rewards for clusters
+                # Calculate weighted average of deltas
+                weights = np.exp(-np.sum(np.square(cluster_states - centroid), axis=1)/gaussian_width)
+                weighted_deltas = weights[:, np.newaxis] * self.transition_delta[valid_indices]
+                cluster_deltas[action][i] = np.sum(weighted_deltas, axis=0) / np.sum(weights)
+                # Update transition_to with transition_from + estimated delta
+                cluster_transitions_to[action][i] = centroid + cluster_deltas[action][i]
+        self.state_action_transitions_from = cluster_transitions_from
+        self.state_action_transitions_to = cluster_transitions_to
+        self.transition_delta = cluster_deltas
+        
         num_clusters = len(self.clustered_states)
         cluster_rewards = np.zeros(num_clusters)
         cluster_weights = np.zeros(num_clusters)  # Sum of weights for normalization
@@ -340,3 +332,6 @@ class Model:
             self.run_k_means()
         elif cluster_type is Clustering_Type.Online_Clustering:
             self.run_online_clustering(k=k, gaussian_width=gaussian_width)
+
+        self.using_clusters = True
+        

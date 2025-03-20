@@ -36,13 +36,17 @@ class Agent:
         for action in self.model.actions:
             if len(self.model.state_action_transitions_from[action]) > 0:
                 from_states = self.model.state_action_transitions_from[action]
-                to_states = self.model.state_action_transitions_to[action]
+                if self.model.using_clusters:
+                    deltas = self.model.transition_delta[action]
+                    to_states = self.model.states[from_states] + deltas # NB! This need to be refactored when we try further training, this is just a temporary solution
+                else:
+                    to_states = self.model.states[self.model.state_action_transitions_to[action]]
                 predicted_delta = np.zeros(self.model.state_dimensions) # Same dimension as states
                 if len(self.model.delta_splines) > 0:
                     predicted_delta = self.model.delta_splines[action](state.reshape(1, -1))[0]
                 self.predicted_deltas[action] = predicted_delta
 
-                weight = np.exp(-np.sum(np.square((state + predicted_delta - states_mean) / states_std - (self.model.states[to_states] - states_mean) / states_std), axis=1) / self.gaussian_width)
+                weight = np.exp(-np.sum(np.square((state + predicted_delta - states_mean) / states_std - (to_states - states_mean) / states_std), axis=1) / self.gaussian_width)
                 
                 sum_weight = np.sum(weight)
                 if sum_weight > 0:

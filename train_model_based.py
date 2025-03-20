@@ -101,7 +101,7 @@ def train_model_based_agent(
                     end = time.time()
                     print("Time :{}".format(end - start))
 
-                    #model.cluster_states(k=k, gaussian_width=gaussian_width_rewards, cluster_type=Clustering_Type.K_Means)
+                    model.cluster_states(k=k, gaussian_width=gaussian_width_rewards, cluster_type=Clustering_Type.K_Means)
 
                     agent.testing = True
 
@@ -142,7 +142,7 @@ def train_model_based_agent(
                         "training_rewards": training_rewards,
                         "testing_rewards": testing_rewards,
                     }
-                    write_to_json(data, "delta_splines_improved")
+                    write_to_json(data)
 
                     if show_clusters_and_rewards:
                         plot_rewards(episode_rewards=episode_rewards)
