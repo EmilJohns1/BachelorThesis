@@ -48,8 +48,9 @@ class Model:
         # List containing tuples of states and the change in state that occurred for a given action. 
         # Creates a list for each action, so indexing this give a list of tuples for that action. 
         self.state_action_transitions_from = [[] for _ in range(action_space_n)]
+        self.state_action_transitions_to = [[] for _ in range(action_space_n)]
         self.transition_delta = [[] for _ in range(action_space_n)]
-        self.delta_splines = [0] * len(self.actions)
+        self.delta_splines = [lambda x: np.zeros(obs_dim)] * len(self.actions)
         
         self.new_transitions_index = np.zeros(len(self.actions), dtype=int)
 
@@ -80,11 +81,17 @@ class Model:
                 prev_state = len(self.states) - 2
                 current_state = len(self.states) - 1
                 self.state_action_transitions_from[actions[i-1]].append(prev_state)
+                self.state_action_transitions_to[actions[i-1]].append(current_state)
                 self.transition_delta[actions[i-1]].append(self.states[current_state] - self.states[prev_state])
+        
+
+    def update_splines(self):
         for action in self.actions:
             from_states = self.states[self.state_action_transitions_from[action]]
             deltas = self.transition_delta[action]
-            self.delta_splines[action] = RBFInterpolator(from_states, deltas, kernel="cubic")
+            if len(from_states) < 5:
+                continue 
+            self.delta_splines[action] = RBFInterpolator(from_states, deltas)
 
     def add_state(self, new_state):
         self.states = np.vstack((self.states, new_state))

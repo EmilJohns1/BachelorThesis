@@ -77,12 +77,17 @@ def train_model_based_agent(
                 state, states_mean, states_std
             )
             # Burde teste med forskjellige verdier for exploration_rate, og forskjellige decay funksjoner hvis det er bedre med en decaying exploration_rate.
-            agent.exploration_rate = max(0.05, 0.30 * (epsilon_decay**episodes))
+            #agent.exploration_rate = max(0.05, 0.30 * (epsilon_decay**episodes))
 
             action = agent.get_action(action_rewards, action_weights)
 
             actions.append(action)
+            prev_state = state.copy()
             state, reward, terminated, truncated, info = env_manager.step(action)
+            
+            actual_delta = state - prev_state
+            agent.update_approximation(action, actual_delta)
+
             states.append(state)
             rewards += float(reward)
 
@@ -137,7 +142,7 @@ def train_model_based_agent(
                         "training_rewards": training_rewards,
                         "testing_rewards": testing_rewards,
                     }
-                    write_to_json(data, "delta_splines_cubic")
+                    write_to_json(data, "delta_splines_improved")
 
                     if show_clusters_and_rewards:
                         plot_rewards(episode_rewards=episode_rewards)
