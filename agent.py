@@ -37,7 +37,6 @@ class Agent:
             if len(self.model.state_action_transitions_from[action]) > 0:
                 from_states = self.model.state_action_transitions_from[action]
                 to_states = self.model.state_action_transitions_to[action]
-                deltas = self.model.transition_delta[action]
                 predicted_delta = np.zeros(self.model.state_dimensions) # Same dimension as states
                 if len(self.model.delta_splines) > 0:
                     predicted_delta = self.model.delta_splines[action](state.reshape(1, -1))[0]

@@ -103,7 +103,7 @@ def train_model_based_agent(
 
                     #model.cluster_states(k=k, gaussian_width=gaussian_width_rewards, cluster_type=Clustering_Type.K_Means)
 
-                    agent.training = True
+                    agent.testing = True
 
                     if show_clusters_and_rewards:
                         plot_rewards(episode_rewards=episode_rewards)
