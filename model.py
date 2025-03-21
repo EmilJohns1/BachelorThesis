@@ -210,6 +210,7 @@ class Model:
 
     def update_transitions_and_rewards_for_clusters(self, gaussian_width=0.2):
         assert self.k == len(self.cluster_states)
+        
         cluster_transitions_from = [[i for i in range(self.k)] for _ in range(len(self.actions))]
         cluster_transitions_to = [[np.zeros(self.state_dimensions) for _ in range(self.k)] for _ in range(len(self.actions))]
         cluster_deltas = [[np.zeros(self.state_dimensions) for _ in range(self.k)] for _ in range(len(self.actions))]
@@ -233,7 +234,7 @@ class Model:
         self.state_action_transitions_from = cluster_transitions_from
         self.state_action_transitions_to = cluster_transitions_to
         self.transition_delta = cluster_deltas
-        
+
         num_clusters = len(self.clustered_states)
         cluster_rewards = np.zeros(num_clusters)
         cluster_weights = np.zeros(num_clusters)  # Sum of weights for normalization
@@ -334,4 +335,5 @@ class Model:
             self.run_online_clustering(k=k, gaussian_width=gaussian_width)
 
         self.using_clusters = True
+        #self.update_splines()
         
