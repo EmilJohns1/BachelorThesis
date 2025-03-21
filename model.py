@@ -2,6 +2,7 @@ from collections import defaultdict
 import gymnasium as gym
 from scipy.special import log_softmax
 from scipy.interpolate import RBFInterpolator
+from sklearn.linear_model import LinearRegression
 
 import numpy as np
 import copy
@@ -50,7 +51,7 @@ class Model:
         self.state_action_transitions_from = [[] for _ in range(action_space_n)]
         self.state_action_transitions_to = [[] for _ in range(action_space_n)]
         self.transition_delta = [[] for _ in range(action_space_n)]
-        self.delta_splines = [lambda x: np.zeros(obs_dim)] * len(self.actions)
+        self.delta_predictor = [lambda x: np.zeros(obs_dim)] * len(self.actions)
         
         self.new_transitions_index = np.zeros(len(self.actions), dtype=int)
 
@@ -91,7 +92,7 @@ class Model:
             deltas = self.transition_delta[action]
             if len(from_states) < 5:
                 continue 
-            self.delta_splines[action] = RBFInterpolator(from_states, deltas)
+            self.delta_predictor[action] = RBFInterpolator(from_states, deltas)
 
     def add_state(self, new_state):
         self.states = np.vstack((self.states, new_state))
@@ -208,27 +209,38 @@ class Model:
 
         print("K-Means clustering completed")
 
-    def update_transitions_and_rewards_for_clusters(self, gaussian_width=0.2):
-        assert self.k == len(self.cluster_states)
+    def update_transitions_and_rewards_for_clusters(self, gaussian_width):
+        print("Updating transitions")
+        assert self.k == len(self.clustered_states)
+        states_array = np.array(self.states)
         
         cluster_transitions_from = [[i for i in range(self.k)] for _ in range(len(self.actions))]
         cluster_transitions_to = [[np.zeros(self.state_dimensions) for _ in range(self.k)] for _ in range(len(self.actions))]
         cluster_deltas = [[np.zeros(self.state_dimensions) for _ in range(self.k)] for _ in range(len(self.actions))]
 
-        for i, centroid in enumerate(self.cluster_states):
+        for i, centroid in enumerate(self.clustered_states):
             # Get the states belonging to centroid i
             cluster_indices = np.where(self.cluster_labels == i)[
                 0
             ] 
             for action in self.actions:
                 # Get the states that are present in transition_from for this action
-                valid_indices = np.intersect1d(cluster_indices, self.state_action_transitions_from[action])
-                cluster_states = states_array[valid_indices]
+                from_indices = np.array(self.state_action_transitions_from[action])
+                deltas = np.array(self.transition_delta[action])
 
-                # Calculate weighted average of deltas
-                weights = np.exp(-np.sum(np.square(cluster_states - centroid), axis=1)/gaussian_width)
-                weighted_deltas = weights[:, np.newaxis] * self.transition_delta[valid_indices]
-                cluster_deltas[action][i] = np.sum(weighted_deltas, axis=0) / np.sum(weights)
+                # Create a mask where from_indices are in cluster_indices
+                valid_mask = np.isin(from_indices, cluster_indices)
+
+                # Select the corresponding states and deltas
+                cluster_states = states_array[from_indices[valid_mask]]
+                selected_deltas = deltas[valid_mask]
+
+                weights = np.exp(-np.sum(np.square(cluster_states - centroid), axis=1) / gaussian_width)
+                weighted_deltas = weights[:, np.newaxis] * selected_deltas
+                weight_sum = np.sum(weights)
+                if weight_sum == 0:
+                    continue
+                cluster_deltas[action][i] = np.sum(weighted_deltas, axis=0) / weight_sum
                 # Update transition_to with transition_from + estimated delta
                 cluster_transitions_to[action][i] = centroid + cluster_deltas[action][i]
         self.state_action_transitions_from = cluster_transitions_from
@@ -239,8 +251,6 @@ class Model:
         cluster_rewards = np.zeros(num_clusters)
         cluster_weights = np.zeros(num_clusters)  # Sum of weights for normalization
 
-        # Compute new rewards for clusters
-        states_array = np.array(self.states)
 
         for i, centroid in enumerate(self.clustered_states):
             # Compute distances between centroid and all states in the cluster
@@ -331,6 +341,7 @@ class Model:
     def cluster_states(self, k, gaussian_width, cluster_type):
         if cluster_type is Clustering_Type.K_Means:
             self.run_k_means()
+            self.update_transitions_and_rewards_for_clusters(gaussian_width=gaussian_width)
         elif cluster_type is Clustering_Type.Online_Clustering:
             self.run_online_clustering(k=k, gaussian_width=gaussian_width)
 
