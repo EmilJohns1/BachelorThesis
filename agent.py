@@ -70,7 +70,7 @@ class Agent:
                 actions_array.low, actions_array.high, size=action_dim
             )
         
-    def update_approximation(self, action, actual_delta, error_threshold=0.0001):
+    def update_approximation(self, action, actual_delta, error_threshold=0.00001):
         if action not in self.predicted_deltas:
             return  # No prediction was made
 
