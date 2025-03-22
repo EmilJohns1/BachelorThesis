@@ -1,7 +1,6 @@
 from collections import defaultdict
 import gymnasium as gym
 from scipy.special import log_softmax
-from scipy.interpolate import RBFInterpolator
 from sklearn.linear_model import LinearRegression
 
 import numpy as np
@@ -51,7 +50,7 @@ class Model:
         self.state_action_transitions_from = [[] for _ in range(action_space_n)]
         self.state_action_transitions_to = [[] for _ in range(action_space_n)]
         self.transition_delta = [[] for _ in range(action_space_n)]
-        self.delta_predictor = [lambda x: np.zeros(obs_dim)] * len(self.actions)
+        self.delta_predictor = [None] * len(self.actions)
         
         self.new_transitions_index = np.zeros(len(self.actions), dtype=int)
 
@@ -88,11 +87,15 @@ class Model:
 
     def update_splines(self):
         for action in self.actions:
-            from_states = self.states[self.state_action_transitions_from[action]]
-            deltas = self.transition_delta[action]
-            if len(from_states) < 5:
-                continue 
-            self.delta_predictor[action] = RBFInterpolator(from_states, deltas)
+            if len(self.state_action_transitions_from[action]) < 2:
+                continue  # Not enough data
+
+            X = self.states[self.state_action_transitions_from[action]]
+            y = np.array(self.transition_delta[action])
+
+            model = LinearRegression()
+            model.fit(X, y)
+            self.delta_predictor[action] = model
 
     def add_state(self, new_state):
         self.states = np.vstack((self.states, new_state))

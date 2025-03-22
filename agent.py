@@ -43,7 +43,11 @@ class Agent:
                     to_states = self.model.states[self.model.state_action_transitions_to[action]]
                 predicted_delta = np.zeros(self.model.state_dimensions) # Same dimension as states
                 if len(self.model.delta_predictor) > 0:
-                    predicted_delta = self.model.delta_predictor[action](state.reshape(1, -1))[0]
+                    predicted_delta = predicted_delta = (
+                        self.model.delta_predictor[action].predict(state.reshape(1, -1))[0]
+                        if self.model.delta_predictor[action] is not None
+                        else np.zeros(self.model.state_dimensions)
+                    )
                 self.predicted_deltas[action] = predicted_delta
 
                 weight = np.exp(-np.sum(np.square((state + predicted_delta - states_mean) / states_std - (to_states - states_mean) / states_std), axis=1) / self.gaussian_width)
@@ -70,7 +74,7 @@ class Agent:
                 actions_array.low, actions_array.high, size=action_dim
             )
         
-    def update_approximation(self, action, actual_delta, error_threshold=0.00001):
+    def update_approximation(self, action, actual_delta, error_threshold=0.01):
         if action not in self.predicted_deltas:
             return  # No prediction was made
 

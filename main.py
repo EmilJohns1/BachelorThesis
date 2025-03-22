@@ -2,8 +2,10 @@ import argparse
 from train_model_based import train_model_based_agent
 from util.reward_visualizer import plot_multiple_runs
 
-plot_multiple_runs(folder_name="logs/update_splines_after_clustering", title="Delta variant k-means k=500", field="testing_rewards", block=False)
-plot_multiple_runs(folder_name="logs", title="Delta variant baseline", field="testing_rewards")
+#plot_multiple_runs(folder_name="logs/linreg_baseline_error_e-5", title="e5", field="testing_rewards", block=False)
+
+#plot_multiple_runs(folder_name="logs/linreg_baseline_error_e-4", title="e4", field="testing_rewards", block=False)
+plot_multiple_runs(folder_name="logs/linreg_baseline_error_e-2", title="e3", field="testing_rewards")
 
 def main(args):
     # if args.agent == "q-learning":
