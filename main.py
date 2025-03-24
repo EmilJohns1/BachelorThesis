@@ -2,10 +2,10 @@ import argparse
 from train_model_based import train_model_based_agent
 from util.reward_visualizer import plot_multiple_runs
 
-#plot_multiple_runs(folder_name="logs/linreg_baseline_error_e-5", title="e5", field="testing_rewards", block=False)
-
-#plot_multiple_runs(folder_name="logs/linreg_baseline_error_e-4", title="e4", field="testing_rewards", block=False)
-plot_multiple_runs(folder_name="logs/linreg_baseline_error_e-2", title="e3", field="testing_rewards")
+#plot_multiple_runs(folder_name="logs/dv_500k_gw02", title="0.2", field="testing_rewards", block=False)
+#plot_multiple_runs(folder_name="logs/gw_actrew_1_0", title="1", field="testing_rewards", block=False)
+#plot_multiple_runs(folder_name="logs/gw_actrew_2_0", title="2", field="testing_rewards", block=False)
+#plot_multiple_runs(folder_name="logs/gw_actrew_3_0", title="3", field="testing_rewards")
 
 def main(args):
     # if args.agent == "q-learning":

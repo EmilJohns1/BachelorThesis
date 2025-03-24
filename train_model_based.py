@@ -24,11 +24,11 @@ def train_model_based_agent(
         environment = env_name if env_name else "CartPole-v1"
         discount_factor = 1.0
         epsilon_decay = 0.999
-        k = 4000
+        k = 500
         gaussian_width_rewards = 0.5
         training_seed = random.randint(0, 2**32 - 1)
         testing_seed = random.randint(0, 2**32 - 1)
-        comments = "Delta prediction with linear regression, followed by regular testing (no clustering)"
+        comments = ""
         training_time = training_time if training_time else 100
         testing_time = 100
         training_rewards = []
@@ -101,7 +101,7 @@ def train_model_based_agent(
                     end = time.time()
                     print("Time :{}".format(end - start))
 
-                    #model.cluster_states(k=k, gaussian_width=gaussian_width_rewards, cluster_type=Clustering_Type.K_Means)
+                    model.cluster_states(k=k, gaussian_width=gaussian_width_rewards, cluster_type=Clustering_Type.K_Means)
 
                     agent.testing = True
 
@@ -142,7 +142,7 @@ def train_model_based_agent(
                         "training_rewards": training_rewards,
                         "testing_rewards": testing_rewards,
                     }
-                    write_to_json(data, "linreg_baseline_error_e-2")
+                    write_to_json(data, "gw_actrew_5")
 
                     if show_clusters_and_rewards:
                         plot_rewards(episode_rewards=episode_rewards)
