@@ -25,7 +25,7 @@ def train_model_based_agent(
         discount_factor = 1.0
         epsilon_decay = 0.999
         k = 500
-        gaussian_width_rewards = 0.5
+        gaussian_width_rewards = 3.0
         training_seed = random.randint(0, 2**32 - 1)
         testing_seed = random.randint(0, 2**32 - 1)
         comments = ""
@@ -142,7 +142,7 @@ def train_model_based_agent(
                         "training_rewards": training_rewards,
                         "testing_rewards": testing_rewards,
                     }
-                    write_to_json(data, "gw_actrew_5")
+                    write_to_json(data)
 
                     if show_clusters_and_rewards:
                         plot_rewards(episode_rewards=episode_rewards)
