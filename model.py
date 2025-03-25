@@ -1,7 +1,8 @@
 from collections import defaultdict
 import gymnasium as gym
-from scipy.special import log_softmax
+from scipy.special import log_softmax, softmax
 from sklearn.linear_model import LinearRegression
+from sklearn.mixture import GaussianMixture
 
 import numpy as np
 import copy
@@ -107,7 +108,7 @@ class Model:
         self.M2 += delta * (new_state - self.states_mean)  # Update variance accumulator
         self.states_std = np.sqrt(self.M2 / n)  # Compute standard deviation
 
-    def scale_rewards(self, log_softmaxed_rewards, new_min=0.01, new_max=100.0):
+    def scale_rewards(self, log_softmaxed_rewards, new_max=0):
         rewards = np.array(log_softmaxed_rewards)
         max_reward = np.max(rewards)
 
@@ -183,7 +184,7 @@ class Model:
         self.original_rewards = self.rewards
 
         states_array = self.states
-        new_rewards = self.scaled_log_softmax()
+        new_rewards = softmax(self.rewards)
         
         if np.any(new_rewards == 0):
             print("Warning: Zero values detected in new_rewards!")
@@ -340,6 +341,19 @@ class Model:
         self.states_std = np.std(self.states, axis=0)
         self.using_clusters = True
 
+    def run_gaussian_mixture(self):
+        print("Running gaussian mixture clustering...")
+        self.original_states = self.states
+        self.original_rewards = self.rewards
+
+        states_array = self.states
+
+        gmm = GaussianMixture(n_components=self.k, covariance_type='full', random_state=42, init_params="kmeans")
+        gmm.fit(states_array)
+
+        self.clustered_states = gmm.means_
+        self.cluster_labels = gmm.predict(states_array)
+        print("Finished gaussian mixture.")
 
     def cluster_states(self, k, gaussian_width, cluster_type):
         if cluster_type is Clustering_Type.K_Means:
@@ -347,6 +361,9 @@ class Model:
             self.update_transitions_and_rewards_for_clusters(gaussian_width=gaussian_width)
         elif cluster_type is Clustering_Type.Online_Clustering:
             self.run_online_clustering(k=k, gaussian_width=gaussian_width)
+        elif cluster_type is Clustering_Type.Gaussian_Mixture:
+            self.run_gaussian_mixture()
+            self.update_transitions_and_rewards_for_clusters(gaussian_width=gaussian_width)
 
         self.using_clusters = True
         #self.update_splines()
