@@ -1,5 +1,6 @@
 import argparse
 from train_model_based import train_model_based_agent
+from qlearning_agent import train_q_learning
 from util.reward_visualizer import plot_multiple_runs
 
 #plot_multiple_runs(folder_name="logs/gaussian_width_action_reward_2_0/clustering_width_0_5", title="0.5", field="testing_rewards", block=False)
@@ -8,11 +9,11 @@ from util.reward_visualizer import plot_multiple_runs
 #plot_multiple_runs(folder_name="logs/gaussian_width_action_reward_2_0/clustering_width_5_0", title="5.0", field="testing_rewards")
 
 def main(args):
-    # if args.agent == "q-learning":
-    #     train_q_learning(args.env)
+    if args.agent == "q-learning":
+        train_q_learning(env_name=args.env, episodes=args.training_time)
     # elif args.agent == "dqn":
     #     train_dqn(args.env)
-    if args.agent == "model-based":
+    elif args.agent == "model-based":
         if args.find_optimal_k:
             find_k = True
             lower_k, upper_k, step = args.find_optimal_k
@@ -64,3 +65,4 @@ if __name__ == "__main__":
     main(args)
 # Run by executing etc: python main.py --agent model-based --env CartPole-v1 --training_time 100 --show_clusters_and_rewards --find_optimal_k 15000 25000 500
 # Simple run: python main.py --agent model-based --env CartPole-v1 --training_time 100
+# python main.py --agent q-learning --env CartPole-v1 --training_time 100

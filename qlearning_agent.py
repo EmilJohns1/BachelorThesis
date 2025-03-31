@@ -23,7 +23,7 @@ def discretize_state(state, bins):
 
 class QLearningAgent:
     def __init__(self, action_space, state_bins,
-                 alpha=0.1, gamma=0.99,
+                 alpha=0.1, gamma=0.8,
                  epsilon=1.0, epsilon_min=0.01,
                  epsilon_decay=0.995):
         self.action_space = action_space
@@ -46,18 +46,18 @@ class QLearningAgent:
     def learn(self, state, action, reward, next_state, done):
         old_value = self.q_table[state][action]
         next_max = np.max(self.q_table[next_state])
-        # Q-learning update.
+
         new_value = (1 - self.alpha) * old_value + self.alpha * (reward + self.gamma * next_max * (not done))
         self.q_table[state][action] = new_value
-        # Decay epsilon if the episode is done.
+
         if done:
             self.epsilon = max(self.epsilon_min, self.epsilon * self.epsilon_decay)
 
-def train_q_learning(episodes=15000, seed=42):
+def train_q_learning(env_name="CartPole-v1", episodes=100, seed=42):
     np.random.seed(seed)
     random.seed(seed)
 
-    env = gym.make("CartPole-v1")
+    env = gym.make(env_name)
     env.reset(seed=seed)
 
     bins = create_bins()
