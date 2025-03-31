@@ -1,12 +1,13 @@
 import argparse
 from train_model_based import train_model_based_agent
-from util.reward_visualizer import plot_multiple_runs
+from util.reward_visualizer import plot_multiple_runs, plot_avg_rewards_recursive
 
 #plot_multiple_runs(folder_name="logs/gaussian_mixture", title="Full", field="testing_rewards", block=False)
 #plot_multiple_runs(folder_name="logs/gaussian_mixture_diag", title="Diag", field="testing_rewards", block=False)
 #plot_multiple_runs(folder_name="logs/gaussian_mixture_kmeans_init", title="KMeans init", field="testing_rewards", block=False)
 #plot_multiple_runs(folder_name="logs/gaussian_width_action_reward_3_0/regular_softmax", title="regular_softmax", field="testing_rewards", block=False)
 #plot_multiple_runs(folder_name="logs/dynamic_gaussian_width", title="Log softmax", field="testing_rewards")
+#plot_avg_rewards_recursive(root_folder="logs/lunar_lander")
 
 def main(args):
     # if args.agent == "q-learning":

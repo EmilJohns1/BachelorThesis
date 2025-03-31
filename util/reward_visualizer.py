@@ -99,3 +99,52 @@ def plot_multiple_runs(folder_name, title, field, block=True):
     plt.ylim(0, 500)
     plt.legend()
     plt.show(block=block)
+
+def plot_avg_rewards_recursive(root_folder, field="testing_rewards", block=True):
+    import os
+    import json
+    import numpy as np
+    import matplotlib.pyplot as plt
+
+    folders = []
+    for dirpath, _, filenames in os.walk(root_folder):
+        if any(f.endswith(".json") for f in filenames):
+            folders.append(dirpath)
+
+    for i, dirpath in enumerate(folders):
+        all_rewards = []
+        for filename in os.listdir(dirpath):
+            if filename.endswith(".json"):
+                with open(os.path.join(dirpath, filename), "r") as f:
+                    data = json.load(f)
+                    if field in data:
+                        all_rewards.append(data[field])
+
+        if not all_rewards:
+            continue
+
+        num_episodes = min(len(r) for r in all_rewards)
+        all_rewards = [r[:num_episodes] for r in all_rewards]
+        all_rewards = np.array(all_rewards)
+
+        mean_rewards = np.mean(all_rewards, axis=0)
+        running_means = np.cumsum(mean_rewards) / np.arange(1, len(mean_rewards) + 1)
+        running_stds = [np.std(mean_rewards[:i+1]) for i in range(len(mean_rewards))]
+
+        plt.figure(figsize=(10, 6))
+        plt.plot(range(1, len(running_means) + 1), running_means, label="Running Mean", color="black")
+        plt.fill_between(
+            range(1, len(running_means) + 1),
+            np.array(running_means) - np.array(running_stds),
+            np.array(running_means) + np.array(running_stds),
+            color="black",
+            alpha=0.3,
+            label="Running Mean ± Std",
+        )
+
+        plt.xlabel("Episode")
+        plt.ylabel("Rewards")
+        plt.title(os.path.relpath(dirpath, root_folder))
+        plt.ylim(0, 500)
+        plt.legend()
+        plt.show(block=(block if i == len(folders) - 1 else False))

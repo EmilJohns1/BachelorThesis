@@ -7,7 +7,7 @@ from time import perf_counter
 
 class Agent:
     def __init__(
-        self, model, gaussian_width=3.0, exploration_rate=0.1
+        self, model, gaussian_width=5.0, exploration_rate=0.1
     ):
         self.model = model
         self.gaussian_width = gaussian_width
