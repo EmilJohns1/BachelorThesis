@@ -17,14 +17,14 @@ from util.clustering_alg import Clustering_Type
 def train_model_based_agent(
     env_name, training_time, show_clusters_and_rewards, find_k, lower_k, upper_k, step
 ):
-    for i in range(20):
+    for i in range(100):
         #################################################
         # These variables should be logged for each run
         environment = env_name if env_name else "CartPole-v1"
         discount_factor = 1.0
         epsilon_decay = 0.999
-        k = 4000
-        gaussian_width_rewards = 0.5
+        k = 500
+        gaussian_width_rewards = 3.0
         training_seed = random.randint(0, 2**32 - 1)
         testing_seed = random.randint(0, 2**32 - 1)
         comments = ""
@@ -75,8 +75,7 @@ def train_model_based_agent(
             action_rewards, action_weights = agent.compute_action_rewards(
                 state, states_mean, states_std
             )
-            # Burde teste med forskjellige verdier for exploration_rate, og forskjellige decay funksjoner hvis det er bedre med en decaying exploration_rate.
-            agent.exploration_rate = max(0.05, 0.30 * (epsilon_decay**episodes))
+            #agent.exploration_rate = max(0.05, 0.30 * (epsilon_decay**episodes))
 
             action = agent.get_action(action_rewards, action_weights)
 
@@ -97,7 +96,7 @@ def train_model_based_agent(
 
                     model.cluster_states(k=k, gaussian_width=gaussian_width_rewards, cluster_type=Clustering_Type.K_Means)
 
-                    agent.training = True
+                    agent.testing = True
 
                     if show_clusters_and_rewards:
                         plot_rewards(episode_rewards=episode_rewards)
@@ -112,9 +111,9 @@ def train_model_based_agent(
                     episodes = -1
                     finished_training = True
 
-                    env_manager = EnvironmentManager(
-                        render_mode="human", environment=environment, seed=testing_seed
-                    )
+                    #env_manager = EnvironmentManager(
+                    #    render_mode="human", environment=environment, seed=testing_seed
+                    #)
 
                 elif episodes < training_time and not finished_training:
                     model.update_model(states, actions, rewards)

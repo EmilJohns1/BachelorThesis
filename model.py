@@ -200,6 +200,7 @@ class Model:
         print("K-Means clustering completed")
 
     def update_transitions_and_rewards_for_clusters(self, gaussian_width=0.2):
+        print("Updating transitions")
         state_to_cluster = {i: self.cluster_labels[i] for i in range(len(self.states))}
 
         transition_counts = defaultdict(lambda: defaultdict(int))
@@ -329,5 +330,6 @@ class Model:
     def cluster_states(self, k, gaussian_width, cluster_type):
         if cluster_type is Clustering_Type.K_Means:
             self.run_k_means()
+            self.update_transitions_and_rewards_for_clusters(gaussian_width=gaussian_width)
         elif cluster_type is Clustering_Type.Online_Clustering:
             self.run_online_clustering(k=k, gaussian_width=gaussian_width)
