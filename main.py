@@ -1,6 +1,7 @@
 import argparse
 from train_model_based import train_model_based_agent
 from qlearning_agent import train_q_learning
+from qlearning_encoder import train_rbf_q_learning
 from util.reward_visualizer import plot_multiple_runs
 
 #plot_multiple_runs(folder_name="logs/gaussian_width_action_reward_2_0/clustering_width_0_5", title="0.5", field="testing_rewards", block=False)
@@ -11,6 +12,8 @@ from util.reward_visualizer import plot_multiple_runs
 def main(args):
     if args.agent == "q-learning":
         train_q_learning(env_name=args.env, episodes=args.training_time)
+    elif args.agent == "encoder-q-learning":
+        train_rbf_q_learning(env_name=args.env, episodes=args.training_time)
     # elif args.agent == "dqn":
     #     train_dqn(args.env)
     elif args.agent == "model-based":
@@ -38,7 +41,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--agent",
         type=str,
-        choices=["q-learning", "dqn", "model-based"],
+        choices=["q-learning", "encoder-q-learning", "dqn", "model-based"],
         required=True,
         help="Choose the RL agent",
     )
@@ -66,3 +69,4 @@ if __name__ == "__main__":
 # Run by executing etc: python main.py --agent model-based --env CartPole-v1 --training_time 100 --show_clusters_and_rewards --find_optimal_k 15000 25000 500
 # Simple run: python main.py --agent model-based --env CartPole-v1 --training_time 100
 # python main.py --agent q-learning --env CartPole-v1 --training_time 100
+# python main.py --agent encoder-q-learning --env CartPole-v1 --training_time 100

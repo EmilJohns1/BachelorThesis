@@ -8,8 +8,8 @@ from util.reward_visualizer import plot_rewards
 
 def create_bins():
     bins = [
-        np.linspace(-4.8, 4.8, 6)[1:-1],
-        np.linspace(-3.0, 3.0, 6)[1:-1],
+        np.linspace(-2.4, 2.4, 6)[1:-1],
+        np.linspace(-5.0, 5.0, 6)[1:-1],
         np.linspace(-0.418, 0.418, 6)[1:-1],
         np.linspace(-3.5, 3.5, 6)[1:-1]
     ]
@@ -25,7 +25,7 @@ class QLearningAgent:
     def __init__(self, action_space, state_bins,
                  alpha=0.1, gamma=0.8,
                  epsilon=1.0, epsilon_min=0.01,
-                 epsilon_decay=0.995):
+                 epsilon_decay=0.99):
         self.action_space = action_space
         self.state_bins = state_bins
         self.alpha = alpha
@@ -91,7 +91,7 @@ def train_q_learning(env_name="CartPole-v1", episodes=100, seed=42):
             "epsilon": agent.epsilon,
             "epsilon_min": agent.epsilon_min,
             "epsilon_decay": agent.epsilon_decay,
-            "seed": seed
+            "seed": seed,
         }
     }
     write_to_json(data)
