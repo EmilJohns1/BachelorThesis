@@ -217,9 +217,10 @@ class Model:
         print("Updating transitions")
         assert self.k == len(self.clustered_states)
         states_array = np.array(self.states)
+        new_states = np.copy(self.clustered_states)
         
         cluster_transitions_from = [[i for i in range(self.k)] for _ in range(len(self.actions))]
-        cluster_transitions_to = [[np.zeros(self.state_dimensions) for _ in range(self.k)] for _ in range(len(self.actions))]
+        cluster_transitions_to = [[i for i in range(self.k)] for _ in range(len(self.actions))]
         cluster_deltas = [[np.zeros(self.state_dimensions) for _ in range(self.k)] for _ in range(len(self.actions))]
 
         for i, centroid in enumerate(self.clustered_states):
@@ -245,8 +246,12 @@ class Model:
                 if weight_sum == 0:
                     continue
                 cluster_deltas[action][i] = np.sum(weighted_deltas, axis=0) / weight_sum
-                # Update transition_to with transition_from + estimated delta
-                cluster_transitions_to[action][i] = centroid + cluster_deltas[action][i]
+
+                to_state = centroid + cluster_deltas[action][i]
+                to_state = to_state.reshape(1, -1)
+                new_states = np.vstack([new_states, to_state])
+                cluster_transitions_to[action][i] = len(new_states) - 1
+
         self.state_action_transitions_from = cluster_transitions_from
         self.state_action_transitions_to = cluster_transitions_to
         self.transition_delta = cluster_deltas
@@ -283,7 +288,7 @@ class Model:
 
         # Store the computed cluster rewards
         self.rewards = cluster_rewards
-        self.states = self.clustered_states
+        self.states = new_states
         self.states_mean = np.mean(self.states, axis=0)
         self.states_std = np.std(self.states, axis=0)
 

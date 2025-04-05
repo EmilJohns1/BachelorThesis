@@ -36,11 +36,7 @@ class Agent:
         for action in self.model.actions:
             if len(self.model.state_action_transitions_from[action]) > 0:
                 from_states = self.model.state_action_transitions_from[action]
-                if self.model.using_clusters:
-                    deltas = self.model.transition_delta[action]
-                    to_states = self.model.states[from_states] + deltas # NB! This need to be refactored when we try further training, this is just a temporary solution
-                else:
-                    to_states = self.model.states[self.model.state_action_transitions_to[action]]
+                to_states = self.model.states[self.model.state_action_transitions_to[action]]
                 predicted_delta = np.zeros(self.model.state_dimensions) # Same dimension as states
                 if len(self.model.delta_predictor) > 0:
                     predicted_delta = predicted_delta = (
