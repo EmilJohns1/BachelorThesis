@@ -14,6 +14,8 @@ from sklearn.cluster import k_means
 from clusterer import Clusterer
 from util.cluster_visualizer import ClusterVisualizer
 from util.clustering_alg import Clustering_Type
+from transitions.transition_model import factory
+from transitions.transition_method import Transition_Method
 
 class Model:
     def __init__(
@@ -27,6 +29,7 @@ class Model:
         lower_k=None,
         upper_k=None,
         step=500,
+        transition_method=Transition_Method.Delta_Transition_Variant,
     ):
         if isinstance(observation_space, gym.spaces.box.Box):
             obs_dim = observation_space.shape[0]
@@ -48,10 +51,7 @@ class Model:
         self.actions: list[int] = list(range(action_space_n))
         # List containing tuples of states and the change in state that occurred for a given action. 
         # Creates a list for each action, so indexing this give a list of tuples for that action. 
-        self.state_action_transitions_from = [[] for _ in range(action_space_n)]
-        self.state_action_transitions_to = [[] for _ in range(action_space_n)]
-        self.transition_delta = [[] for _ in range(action_space_n)]
-        self.delta_predictor = [None] * len(self.actions)
+        self.transition_model = factory(method=transition_method, action_space_n=action_space_n)
         
         self.new_transitions_index = np.zeros(len(self.actions), dtype=int)
 
@@ -79,11 +79,12 @@ class Model:
                 )
             )
             if i > 0:
-                prev_state = len(self.states) - 2
-                current_state = len(self.states) - 1
-                self.state_action_transitions_from[actions[i-1]].append(prev_state)
-                self.state_action_transitions_to[actions[i-1]].append(current_state)
-                self.transition_delta[actions[i-1]].append(self.states[current_state] - self.states[prev_state])
+                prev_state_index = len(self.states) - 2
+                current_state_index = len(self.states) - 1
+                self.transition_model.update_transitions(actions[i-1], 
+                                                         (prev_state_index, self.states[prev_state_index]), 
+                                                         (current_state_index, self.states[current_state_index])
+                                                         )
         
 
     def update_splines(self):
