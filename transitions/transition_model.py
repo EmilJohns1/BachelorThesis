@@ -24,7 +24,7 @@ class Direct_Transition_Model:
         self.state_action_transitions_to[action].append(to_index)
 
     def has_transitions(self, action):
-        len(self.state_action_transitions_from[action]) > 0
+        return len(self.state_action_transitions_from[action]) > 0
 
     def get_transition_center(self, state, _):
         return state
@@ -50,25 +50,22 @@ class Delta_Transition_Model:
         self.transition_delta[action].append(to_vector - from_vector)
 
     def has_transitions(self, action):
-        len(self.state_action_transitions_from[action]) > 0
+        return len(self.state_action_transitions_from[action]) > 0
 
     def get_transition_center(self, state, action):
-        predicted_delta = np.zeros(self.model.state_dimensions) # Same dimension as states
+        predicted_delta = np.zeros_like(state) # Same dimension as states
         if len(self.delta_predictor) > 0:
             predicted_delta = (
-                self.model.delta_predictor[action].predict(state.reshape(1, -1))[0]
-                if self.model.delta_predictor[action] is not None
-                else np.zeros(self.model.state_dimensions)
+                self.delta_predictor[action].predict(state.reshape(1, -1))[0]
+                if self.delta_predictor[action] is not None
+                else np.zeros_like(state)
             )
         self.predicted_deltas[action] = predicted_delta
         return state + predicted_delta
-    
-    def get_query_points(self, states):
-        
 
     def update_predictions(self, action, actual_delta, error_threshold, states):
         if action not in self.predicted_deltas:
-            return  # No prediction was made
+            return False# No prediction was made
 
         predicted_delta = self.predicted_deltas[action]
 
@@ -77,8 +74,8 @@ class Delta_Transition_Model:
 
         # If the error is high, update splines
         if error > error_threshold:
-            print(f"Updating splines for action {action}, error: {error:.10f}")
             self.update_delta_predictors(states)
+            return True
 
     def update_delta_predictors(self, states):
         for action in range(self.action_space_n):

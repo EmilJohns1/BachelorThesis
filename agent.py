@@ -34,14 +34,10 @@ class Agent:
         self.predicted_deltas = {}
 
         for action in self.model.actions:
-            if self.model.transition_model.has_transitions():
+            if self.model.transition_model.has_transitions(action):
                 (center, query_points, query_point_rewards) = self.model.get_transition_data(state, action)
                 from_states = self.model.state_action_transitions_from[action]
-                if self.model.using_clusters:
-                    deltas = self.model.transition_delta[action]
-                    to_states = self.model.states[from_states] + deltas # NB! This need to be refactored when we try further training, this is just a temporary solution
-                else:
-                    to_states = self.model.states[self.model.state_action_transitions_to[action]]
+                to_states = self.model.states[self.model.state_action_transitions_to[action]]
                 predicted_delta = np.zeros(self.model.state_dimensions) # Same dimension as states
                 if len(self.model.delta_predictor) > 0:
                     predicted_delta = predicted_delta = (
@@ -53,6 +49,7 @@ class Agent:
 
                 weight = np.exp(-np.sum(np.square((state + predicted_delta - states_mean) / states_std - (to_states - states_mean) / states_std), axis=1) / self.gaussian_width)
                 weight_2 = np.exp(-np.sum(np.square((center - states_mean) / states_std - (query_points - states_mean) / states_std), axis=1) / self.gaussian_width)
+
                 assert np.array_equal(weight, weight_2)
                 assert np.array_equal(self.model.rewards[from_states], query_point_rewards)
 
