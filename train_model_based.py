@@ -86,7 +86,7 @@ def train_model_based_agent(
             state, reward, terminated, truncated, info = env_manager.step(action)
             
             actual_delta = state - prev_state
-            agent.update_approximation(action, actual_delta)
+            model.update_approximation(action, actual_delta)
 
             states.append(state)
             rewards += float(reward)

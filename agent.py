@@ -34,7 +34,8 @@ class Agent:
         self.predicted_deltas = {}
 
         for action in self.model.actions:
-            if len(self.model.state_action_transitions_from[action]) > 0:
+            if self.model.transition_model.has_transitions():
+                (center, query_points, query_point_rewards) = self.model.get_transition_data(state, action)
                 from_states = self.model.state_action_transitions_from[action]
                 if self.model.using_clusters:
                     deltas = self.model.transition_delta[action]
@@ -51,6 +52,10 @@ class Agent:
                 self.predicted_deltas[action] = predicted_delta
 
                 weight = np.exp(-np.sum(np.square((state + predicted_delta - states_mean) / states_std - (to_states - states_mean) / states_std), axis=1) / self.gaussian_width)
+                weight_2 = np.exp(-np.sum(np.square((center - states_mean) / states_std - (query_points - states_mean) / states_std), axis=1) / self.gaussian_width)
+                assert np.array_equal(weight, weight_2)
+                assert np.array_equal(self.model.rewards[from_states], query_point_rewards)
+
                 sum_weight = np.sum(weight)
                 if sum_weight > 0:
                     action_weights[action] = sum_weight
@@ -75,15 +80,5 @@ class Agent:
             )
         
     def update_approximation(self, action, actual_delta, error_threshold=0.01):
-        if action not in self.predicted_deltas:
-            return  # No prediction was made
-
-        predicted_delta = self.predicted_deltas[action]
-
-        # Compute error (Mean Squared Error)
-        error = np.mean(np.square(predicted_delta - actual_delta))
-
-        # If the error is high, update splines
-        if error > error_threshold and not self.testing:
-            #print(f"Updating splines for action {action}, error: {error:.10f}")
-            self.model.update_splines()
+        if not self.testing:
+            self.model.check_transition_error(action, actual_delta, error_threshold)

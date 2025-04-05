@@ -99,6 +99,16 @@ class Model:
             model.fit(X, y)
             self.delta_predictor[action] = model
 
+    def get_transition_data(self, state, action):
+        from_states = self.transition_model.state_action_transitions_from[action]
+
+        return (self.transition_model.get_transition_center(state, action), 
+                self.transition_model.get_query_points(), 
+                self.model.rewards[from_states])
+    
+    def check_transition_error(self, action, actual_delta, error_threshold):
+        self.transition_model.update_predictions(action, actual_delta, error_threshold, self.states)
+
     def add_state(self, new_state):
         self.states = np.vstack((self.states, new_state))
         n = len(self.states)
@@ -246,8 +256,11 @@ class Model:
                 if weight_sum == 0:
                     continue
                 cluster_deltas[action][i] = np.sum(weighted_deltas, axis=0) / weight_sum
+
+                to_state = centroid + cluster_deltas[action][i]
+                self.clustered_states = np.vstack([self.cluster_states, to_state])
                 # Update transition_to with transition_from + estimated delta
-                cluster_transitions_to[action][i] = centroid + cluster_deltas[action][i]
+                cluster_transitions_to[action][i].append(len(self.cluster_states) - 1)
         self.state_action_transitions_from = cluster_transitions_from
         self.state_action_transitions_to = cluster_transitions_to
         self.transition_delta = cluster_deltas
