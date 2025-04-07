@@ -142,7 +142,7 @@ def train_model_based_agent(
                         "training_rewards": training_rewards,
                         "testing_rewards": testing_rewards,
                     }
-                    write_to_json(data)
+                    write_to_json(data, "verification/200_ep_baseline")
 
                     if show_clusters_and_rewards:
                         plot_rewards(episode_rewards=episode_rewards)

@@ -49,17 +49,9 @@ class Model:
         self.reward_weights = np.ones(0)
 
         self.actions: list[int] = list(range(action_space_n))
-        # List containing tuples of states and the change in state that occurred for a given action. 
-        # Creates a list for each action, so indexing this give a list of tuples for that action. 
+
         self.transition_model = factory(method=transition_method, action_space_n=action_space_n)
 
-        ### TODO: REMOVE
-        self.state_action_transitions_from = [[] for _ in range(action_space_n)]
-        self.state_action_transitions_to = [[] for _ in range(action_space_n)]
-        self.transition_delta = [[] for _ in range(action_space_n)]
-        self.delta_predictor = [None] * len(self.actions)
-        ###
-        
         self.new_transitions_index = np.zeros(len(self.actions), dtype=int)
 
         self.discount_factor: float = (
@@ -88,30 +80,10 @@ class Model:
             if i > 0:
                 prev_state_index = len(self.states) - 2
                 current_state_index = len(self.states) - 1
-
-                ### TODO: REMOVE
-                self.state_action_transitions_from[actions[i-1]].append(prev_state_index)
-                self.state_action_transitions_to[actions[i-1]].append(current_state_index)
-                self.transition_delta[actions[i-1]].append(self.states[current_state_index] - self.states[prev_state_index])
-                ###
-
                 self.transition_model.update_transitions(actions[i-1], 
                                                          (prev_state_index, self.states[prev_state_index]), 
                                                          (current_state_index, self.states[current_state_index])
                                                          )
-        
-
-    def update_splines(self):
-        for action in self.actions:
-            if len(self.state_action_transitions_from[action]) < 2:
-                continue  # Not enough data
-
-            X = self.states[self.state_action_transitions_from[action]]
-            y = np.array(self.transition_delta[action])
-
-            model = LinearRegression()
-            model.fit(X, y)
-            self.delta_predictor[action] = model
 
     def get_transition_data(self, state, action):
         from_states = self.transition_model.state_action_transitions_from[action]
@@ -122,8 +94,7 @@ class Model:
                 self.rewards[from_states])
     
     def check_transition_error(self, action, actual_delta, error_threshold):
-        if self.transition_model.update_predictions(action, actual_delta, error_threshold, self.states):
-            self.update_splines()
+        self.transition_model.update_predictions(action, actual_delta, error_threshold, self.states)
 
     def add_state(self, new_state):
         self.states = np.vstack((self.states, new_state))
@@ -257,8 +228,8 @@ class Model:
             ] 
             for action in self.actions:
                 # Get the states that are present in transition_from for this action
-                from_indices = np.array(self.state_action_transitions_from[action])
-                deltas = np.array(self.transition_delta[action])
+                from_indices = np.array(self.transition_model.state_action_transitions_from[action])
+                deltas = np.array(self.transition_model.transition_delta[action])
 
                 # Create a mask where from_indices are in cluster_indices
                 valid_mask = np.isin(from_indices, cluster_indices)
@@ -279,14 +250,9 @@ class Model:
                 new_states = np.vstack([new_states, to_state])
                 cluster_transitions_to[action][i] = len(new_states) - 1
 
-        ## TODO: REMOVE
-        self.state_action_transitions_from = cluster_transitions_from
-        self.state_action_transitions_to = cluster_transitions_to
-        self.transition_delta = cluster_deltas
-        ###
-        self.transition_model.state_action_transitions_from = copy.deepcopy(cluster_transitions_from)
-        self.transition_model.state_action_transitions_to = copy.deepcopy(cluster_transitions_to)
-        self.transition_model.transition_delta = copy.deepcopy(cluster_deltas)
+        self.transition_model.state_action_transitions_from = cluster_transitions_from
+        self.transition_model.state_action_transitions_to = cluster_transitions_to
+        self.transition_model.transition_delta = cluster_deltas
 
         num_clusters = len(self.clustered_states)
         cluster_rewards = np.zeros(num_clusters)

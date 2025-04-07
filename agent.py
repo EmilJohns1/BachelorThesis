@@ -16,8 +16,8 @@ class Agent:
         self.predicted_deltas = {} # Used to adjust splines in the model
 
     def normalize_states(self):
-        states_mean = np.array([0.0, 0.0, 0.0, 0.0])
-        states_std = np.array([1.0, 1.0, 1.0, 1.0])
+        states_mean = np.zeros(self.model.state_dimensions)
+        states_std = np.ones(self.model.state_dimensions)
 
         if len(self.model.states) > 0:
             states_mean = self.model.states_mean
@@ -31,32 +31,17 @@ class Agent:
     def compute_action_rewards(self, state, states_mean, states_std):
         action_rewards = np.zeros(len(self.model.actions))
         action_weights = np.zeros(len(self.model.actions))
-        self.predicted_deltas = {}
 
         for action in self.model.actions:
             if self.model.transition_model.has_transitions(action):
                 (center, query_points, query_point_rewards) = self.model.get_transition_data(state, action)
-                from_states = self.model.state_action_transitions_from[action]
-                to_states = self.model.states[self.model.state_action_transitions_to[action]]
-                predicted_delta = np.zeros(self.model.state_dimensions) # Same dimension as states
-                if len(self.model.delta_predictor) > 0:
-                    predicted_delta = predicted_delta = (
-                        self.model.delta_predictor[action].predict(state.reshape(1, -1))[0]
-                        if self.model.delta_predictor[action] is not None
-                        else np.zeros(self.model.state_dimensions)
-                    )
-                self.predicted_deltas[action] = predicted_delta
 
-                weight = np.exp(-np.sum(np.square((state + predicted_delta - states_mean) / states_std - (to_states - states_mean) / states_std), axis=1) / self.gaussian_width)
-                weight_2 = np.exp(-np.sum(np.square((center - states_mean) / states_std - (query_points - states_mean) / states_std), axis=1) / self.gaussian_width)
-
-                assert np.array_equal(weight, weight_2)
-                assert np.array_equal(self.model.rewards[from_states], query_point_rewards)
+                weight = np.exp(-np.sum(np.square((center - states_mean) / states_std - (query_points - states_mean) / states_std), axis=1) / self.gaussian_width)
 
                 sum_weight = np.sum(weight)
                 if sum_weight > 0:
                     action_weights[action] = sum_weight
-                    action_rewards[action] = np.sum(weight * self.model.rewards[from_states]) / sum_weight
+                    action_rewards[action] = np.sum(weight * query_point_rewards) / sum_weight
         return action_rewards, action_weights
 
     def get_action(self, action_rewards, action_weights):

@@ -1,7 +1,7 @@
 import argparse
 from train_model_based import train_model_based_agent
 from util.reward_visualizer import plot_multiple_runs, plot_avg_rewards_recursive
-
+plot_avg_rewards_recursive("logs/verification")
 
 def main(args):
     # if args.agent == "q-learning":

@@ -88,3 +88,8 @@ class Delta_Transition_Model:
             model = LinearRegression()
             model.fit(X, y)
             self.delta_predictor[action] = model
+
+    def set_transitions(self, cluster_transitions_from, cluster_transitions_to, cluster_deltas):
+        self.transition_model.state_action_transitions_from = cluster_transitions_from
+        self.transition_model.state_action_transitions_to = cluster_transitions_to
+        self.transition_model.transition_delta = cluster_deltas
