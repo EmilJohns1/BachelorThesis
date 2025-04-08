@@ -220,7 +220,6 @@ class Model:
             gaussian_width=gaussian_width
             )
         
-
         num_clusters = len(self.clustered_states)
         cluster_rewards = np.zeros(num_clusters)
         cluster_weights = np.zeros(num_clusters)  # Sum of weights for normalization

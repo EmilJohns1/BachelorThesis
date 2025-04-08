@@ -25,8 +25,8 @@ def train_model_based_agent(
         environment = env_name if env_name else "CartPole-v1"
         discount_factor = 1.0
         epsilon_decay = 0.999
-        k = 4000
-        gaussian_width_rewards = 0.5
+        k = 500
+        gaussian_width_rewards = 3.0
         training_seed = random.randint(0, 2**32 - 1)
         testing_seed = random.randint(0, 2**32 - 1)
         comments = ""
@@ -77,7 +77,6 @@ def train_model_based_agent(
             action_rewards, action_weights = agent.compute_action_rewards(
                 state, states_mean, states_std
             )
-            # Burde teste med forskjellige verdier for exploration_rate, og forskjellige decay funksjoner hvis det er bedre med en decaying exploration_rate.
             #agent.exploration_rate = max(0.05, 0.30 * (epsilon_decay**episodes))
 
             action = agent.get_action(action_rewards, action_weights)
