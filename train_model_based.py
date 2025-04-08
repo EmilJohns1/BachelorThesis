@@ -52,6 +52,7 @@ def train_model_based_agent(
             lower_k=lower_k,
             upper_k=upper_k,
             step=step,
+            transition_method=Transition_Method.Direct_Transition_Mapping
         )
         agent = Agent(model)
 
@@ -143,7 +144,7 @@ def train_model_based_agent(
                         "training_rewards": training_rewards,
                         "testing_rewards": testing_rewards,
                     }
-                    write_to_json(data, "ver/dir_k500")
+                    write_to_json(data)
 
                     if show_clusters_and_rewards:
                         plot_rewards(episode_rewards=episode_rewards)

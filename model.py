@@ -37,7 +37,6 @@ class Model:
             obs_dim = 1
         else:
             raise ValueError("Unsupported observation space type!")
-        obs_dim *= 4
         self.state_dimensions = obs_dim
         self.states: np.ndarray = np.empty((0, obs_dim))  # States are stored here
         self.clusterer = Clusterer(K=k, D=obs_dim, sigma=sigma, lambda_=0.5, learning_rate=0.02, action_space_n=action_space_n)
