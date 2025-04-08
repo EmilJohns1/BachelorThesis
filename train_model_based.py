@@ -25,7 +25,7 @@ def train_model_based_agent(
         environment = env_name if env_name else "CartPole-v1"
         discount_factor = 1.0
         epsilon_decay = 0.999
-        k = 500
+        k = 4000
         gaussian_width_rewards = 0.5
         training_seed = random.randint(0, 2**32 - 1)
         testing_seed = random.randint(0, 2**32 - 1)
@@ -52,7 +52,6 @@ def train_model_based_agent(
             lower_k=lower_k,
             upper_k=upper_k,
             step=step,
-            transition_method=Transition_Method.Direct_Transition_Mapping
         )
         agent = Agent(model)
 

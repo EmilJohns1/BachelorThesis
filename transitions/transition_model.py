@@ -64,6 +64,9 @@ class Direct_Transition_Model:
     def get_query_points(self, action, states):
         return states[self.state_action_transitions_from[action]]
     
+    def get_query_point_rewards(self, action, rewards):
+        return rewards[self.state_action_transitions_to[action]]
+    
 class Delta_Transition_Model:
     def __init__(self, action_space_n):
         self.action_space_n = action_space_n
@@ -97,6 +100,9 @@ class Delta_Transition_Model:
     
     def get_query_points(self, action, states):
         return states[self.state_action_transitions_to[action]]
+    
+    def get_query_point_rewards(self, action, rewards):
+        return rewards[self.state_action_transitions_from[action]]
 
     def update_predictions(self, action, actual_delta, error_threshold, states):
         if action not in self.predicted_deltas:
