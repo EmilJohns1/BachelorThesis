@@ -12,12 +12,14 @@ from util.cluster_visualizer import ClusterVisualizer
 from util.logger import write_to_json
 from util.reward_visualizer import plot_rewards
 from util.clustering_alg import Clustering_Type
+from transitions.transition_method import Transition_Method
 
 
 def train_model_based_agent(
     env_name, training_time, show_clusters_and_rewards, find_k, lower_k, upper_k, step
 ):
     for i in range(100):
+        print("--- Starting new run ---")
         #################################################
         # These variables should be logged for each run
         environment = env_name if env_name else "CartPole-v1"
@@ -80,7 +82,12 @@ def train_model_based_agent(
             action = agent.get_action(action_rewards, action_weights)
 
             actions.append(action)
+            prev_state = state.copy()
             state, reward, terminated, truncated, info = env_manager.step(action)
+            
+            actual_delta = state - prev_state
+            agent.update_approximation(action, actual_delta)
+
             states.append(state)
             rewards += float(reward)
 

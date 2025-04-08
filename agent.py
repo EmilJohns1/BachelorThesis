@@ -2,19 +2,22 @@ import gymnasium as gym
 
 import numpy as np
 
+from time import perf_counter
+
 
 class Agent:
     def __init__(
-        self, model, gaussian_width=3.0, exploration_rate=0.1
+        self, model, gaussian_width=0.5, exploration_rate=0.1
     ):
         self.model = model
         self.gaussian_width = gaussian_width
         self.exploration_rate = exploration_rate
         self.testing = False
+        self.predicted_deltas = {} # Used to adjust splines in the model
 
     def normalize_states(self):
-        states_mean = np.array([0.0, 0.0, 0.0, 0.0])
-        states_std = np.array([1.0, 1.0, 1.0, 1.0])
+        states_mean = np.zeros(self.model.state_dimensions)
+        states_std = np.ones(self.model.state_dimensions)
 
         if len(self.model.states) > 0:
             states_mean = self.model.states_mean
@@ -26,44 +29,38 @@ class Agent:
         return states_mean, states_std
 
     def compute_action_rewards(self, state, states_mean, states_std):
-        action_rewards = [0.0 for _ in self.model.actions]
-        action_weights = [0.0 for _ in self.model.actions]
+        action_rewards = np.zeros(len(self.model.actions))
+        action_weights = np.zeros(len(self.model.actions))
 
-        # Ensure transitions refer to valid cluster indices
         for action in self.model.actions:
-            if len(self.model.state_action_transitions_from[action]) > 0:
-                dist = (state - states_mean) / states_std - (
-                    self.model.states[self.model.state_action_transitions_from[action]]
-                    - states_mean
-                ) / states_std
-                weight = np.exp(-np.sum(np.square(dist), axis=1) / self.gaussian_width)
-                action_weights[action] = np.sum(weight)
-                action_rewards[action] = (
-                    np.sum(
-                        weight
-                        * self.model.rewards[
-                            np.array(
-                                self.model.state_action_transitions_to[action],
-                                dtype=int,
-                            )  # Ensure it's an integer array
-                        ]
-                    )
-                    / action_weights[action]
-                )
+            if self.model.transition_model.has_transitions(action):
+                (center, query_points, query_point_rewards) = self.model.get_transition_data(state, action)
+
+                weight = np.exp(-np.sum(np.square((center - states_mean) / states_std - (query_points - states_mean) / states_std), axis=1) / self.gaussian_width)
+
+                sum_weight = np.sum(weight)
+                if sum_weight > 0:
+                    action_weights[action] = sum_weight
+                    action_rewards[action] = np.sum(weight * query_point_rewards) / sum_weight
         return action_rewards, action_weights
 
     def get_action(self, action_rewards, action_weights):
+        actions_array = np.array(self.model.actions)
         if isinstance(self.model.actions, list):
             if self.testing:
                 return np.argmax(action_rewards)
             if np.any(action_weights == 0): 
-                return np.random.choice(self.model.actions[np.where(action_weights == 0)[0]])
+                return np.random.choice(actions_array[np.where(action_weights == 0)[0]])
             if np.random.rand() < self.exploration_rate:
-                return np.random.choice(self.model.actions)
+                return np.random.choice(actions_array)
             return np.argmax(action_rewards)
 
-        if isinstance(self.model.actions, gym.spaces.Box):
-            action_dim = self.model.actions.shape[0]
+        if isinstance(actions_array, gym.spaces.Box):
+            action_dim = actions_array.shape[0]
             return np.random.uniform(
-                self.model.actions.low, self.model.actions.high, size=action_dim
+                actions_array.low, actions_array.high, size=action_dim
             )
+        
+    def update_approximation(self, action, actual_delta, error_threshold=0.01):
+        if not self.testing:
+            self.model.check_transition_error(action, actual_delta, error_threshold)
