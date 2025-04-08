@@ -87,10 +87,9 @@ class Model:
 
     def get_transition_data(self, state, action):
         from_states = self.transition_model.state_action_transitions_from[action]
-        to_states = self.states[self.transition_model.state_action_transitions_to[action]]
 
         return (self.transition_model.get_transition_center(state, action), 
-                to_states, 
+                self.transition_model.get_query_points(action, self.states), 
                 self.rewards[from_states])
     
     def check_transition_error(self, action, actual_delta, error_threshold):
@@ -215,44 +214,15 @@ class Model:
         print("Updating transitions")
         assert self.k == len(self.clustered_states)
         states_array = np.array(self.states)
-        new_states = np.copy(self.clustered_states)
+        new_states = self.transition_model.cluster_transitions(
+            states_array=states_array, 
+            clustered_states=self.clustered_states,
+            cluster_labels=self.cluster_labels,
+            new_states=np.copy(self.clustered_states),
+            k=self.k,
+            gaussian_width=gaussian_width
+            )
         
-        cluster_transitions_from = [[i for i in range(self.k)] for _ in range(len(self.actions))]
-        cluster_transitions_to = [[i for i in range(self.k)] for _ in range(len(self.actions))]
-        cluster_deltas = [[np.zeros(self.state_dimensions) for _ in range(self.k)] for _ in range(len(self.actions))]
-
-        for i, centroid in enumerate(self.clustered_states):
-            # Get the states belonging to centroid i
-            cluster_indices = np.where(self.cluster_labels == i)[
-                0
-            ] 
-            for action in self.actions:
-                # Get the states that are present in transition_from for this action
-                from_indices = np.array(self.transition_model.state_action_transitions_from[action])
-                deltas = np.array(self.transition_model.transition_delta[action])
-
-                # Create a mask where from_indices are in cluster_indices
-                valid_mask = np.isin(from_indices, cluster_indices)
-
-                # Select the corresponding states and deltas
-                cluster_states = states_array[from_indices[valid_mask]]
-                selected_deltas = deltas[valid_mask]
-
-                weights = np.exp(-np.sum(np.square(cluster_states - centroid), axis=1) / gaussian_width)
-                weighted_deltas = weights[:, np.newaxis] * selected_deltas
-                weight_sum = np.sum(weights)
-                if weight_sum == 0:
-                    continue
-                cluster_deltas[action][i] = np.sum(weighted_deltas, axis=0) / weight_sum
-
-                to_state = centroid + cluster_deltas[action][i]
-                to_state = to_state.reshape(1, -1)
-                new_states = np.vstack([new_states, to_state])
-                cluster_transitions_to[action][i] = len(new_states) - 1
-
-        self.transition_model.state_action_transitions_from = cluster_transitions_from
-        self.transition_model.state_action_transitions_to = cluster_transitions_to
-        self.transition_model.transition_delta = cluster_deltas
 
         num_clusters = len(self.clustered_states)
         cluster_rewards = np.zeros(num_clusters)

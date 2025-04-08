@@ -1,5 +1,6 @@
 from transitions.transition_method import Transition_Method
 from sklearn.linear_model import LinearRegression
+from collections import defaultdict
 
 import numpy as np
 
@@ -13,6 +14,7 @@ def factory(method: Transition_Method, action_space_n):
 
 class Direct_Transition_Model:
     def __init__(self, action_space_n):
+        self.action_space_n = action_space_n
         self.state_action_transitions_from = [[] for _ in range(action_space_n)]
         self.state_action_transitions_to = [[] for _ in range(action_space_n)]
 
@@ -31,7 +33,37 @@ class Direct_Transition_Model:
     
     def update_predictions(self, _action, _actual_delta, _error_threshold, _states):
         return
+    
+    def cluster_transitions(self, states_array, clustered_states, cluster_labels, new_states, k, gaussian_width):
+        state_to_cluster = {i: cluster_labels[i] for i in range(len(states_array))}
 
+        transition_counts = defaultdict(lambda: defaultdict(int))
+
+        for action in range(self.action_space_n):
+            for from_state, to_state in zip(
+                self.state_action_transitions_from[action],
+                self.state_action_transitions_to[action],
+            ):
+                from_cluster = state_to_cluster[from_state]
+                to_cluster = state_to_cluster[to_state]
+
+                transition_counts[(from_cluster, action)][to_cluster] += 1
+
+        clustered_transitions_from = [[] for _ in range(self.action_space_n)]
+        clustered_transitions_to = [[] for _ in range(self.action_space_n)]
+        for (from_cluster, action), to_clusters in transition_counts.items():
+
+            for to_cluster, _ in to_clusters.items():
+                clustered_transitions_from[action].append(from_cluster)
+                clustered_transitions_to[action].append(to_cluster)
+
+        self.state_action_transitions_from = clustered_transitions_from
+        self.state_action_transitions_to = clustered_transitions_to
+        return new_states
+    
+    def get_query_points(self, action, states):
+        return states[self.state_action_transitions_from[action]]
+    
 class Delta_Transition_Model:
     def __init__(self, action_space_n):
         self.action_space_n = action_space_n
@@ -62,6 +94,9 @@ class Delta_Transition_Model:
             )
         self.predicted_deltas[action] = predicted_delta
         return state + predicted_delta
+    
+    def get_query_points(self, action, states):
+        return states[self.state_action_transitions_to[action]]
 
     def update_predictions(self, action, actual_delta, error_threshold, states):
         if action not in self.predicted_deltas:
@@ -89,7 +124,41 @@ class Delta_Transition_Model:
             model.fit(X, y)
             self.delta_predictor[action] = model
 
-    def set_transitions(self, cluster_transitions_from, cluster_transitions_to, cluster_deltas):
-        self.transition_model.state_action_transitions_from = cluster_transitions_from
-        self.transition_model.state_action_transitions_to = cluster_transitions_to
-        self.transition_model.transition_delta = cluster_deltas
+    def cluster_transitions(self, states_array, clustered_states, cluster_labels, new_states, k, gaussian_width):
+        cluster_transitions_from = [[i for i in range(k)] for _ in range(self.action_space_n)]
+        cluster_transitions_to = [[i for i in range(k)] for _ in range(self.action_space_n)]
+        cluster_deltas = [[np.zeros_like(states_array[0]) for _ in range(k)] for _ in range(self.action_space_n)]
+
+        for i, centroid in enumerate(clustered_states):
+            # Get the states belonging to centroid i
+            cluster_indices = np.where(cluster_labels == i)[
+                0
+            ] 
+            for action in range(self.action_space_n):
+                # Get the states that are present in transition_from for this action
+                from_indices = np.array(self.state_action_transitions_from[action])
+                deltas = np.array(self.transition_delta[action])
+
+                # Create a mask where from_indices are in cluster_indices
+                valid_mask = np.isin(from_indices, cluster_indices)
+
+                # Select the corresponding states and deltas
+                cluster_states = states_array[from_indices[valid_mask]]
+                selected_deltas = deltas[valid_mask]
+
+                weights = np.exp(-np.sum(np.square(cluster_states - centroid), axis=1) / gaussian_width)
+                weighted_deltas = weights[:, np.newaxis] * selected_deltas
+                weight_sum = np.sum(weights)
+                if weight_sum == 0:
+                    continue
+                cluster_deltas[action][i] = np.sum(weighted_deltas, axis=0) / weight_sum
+
+                to_state = centroid + cluster_deltas[action][i]
+                to_state = to_state.reshape(1, -1)
+                new_states = np.vstack([new_states, to_state])
+                cluster_transitions_to[action][i] = len(new_states) - 1
+
+        self.state_action_transitions_from = cluster_transitions_from
+        self.state_action_transitions_to = cluster_transitions_to
+        self.transition_delta = cluster_deltas
+        return new_states

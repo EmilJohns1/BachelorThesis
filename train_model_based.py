@@ -12,6 +12,7 @@ from util.cluster_visualizer import ClusterVisualizer
 from util.logger import write_to_json
 from util.reward_visualizer import plot_rewards
 from util.clustering_alg import Clustering_Type
+from transitions.transition_method import Transition_Method
 
 
 def train_model_based_agent(
@@ -25,7 +26,7 @@ def train_model_based_agent(
         discount_factor = 1.0
         epsilon_decay = 0.999
         k = 500
-        gaussian_width_rewards = 3.0
+        gaussian_width_rewards = 0.5
         training_seed = random.randint(0, 2**32 - 1)
         testing_seed = random.randint(0, 2**32 - 1)
         comments = ""
@@ -101,7 +102,7 @@ def train_model_based_agent(
                     end = time.time()
                     print("Time :{}".format(end - start))
 
-                    #model.cluster_states(k=k, gaussian_width=gaussian_width_rewards, cluster_type=Clustering_Type.K_Means)
+                    model.cluster_states(k=k, gaussian_width=gaussian_width_rewards, cluster_type=Clustering_Type.K_Means)
 
                     agent.testing = True
 
@@ -142,7 +143,7 @@ def train_model_based_agent(
                         "training_rewards": training_rewards,
                         "testing_rewards": testing_rewards,
                     }
-                    write_to_json(data)
+                    write_to_json(data, "ver/dir_k500")
 
                     if show_clusters_and_rewards:
                         plot_rewards(episode_rewards=episode_rewards)
