@@ -1,4 +1,5 @@
-import enum 
+import enum
+
 
 class Clustering_Type(enum.Enum):
     K_Means = 1

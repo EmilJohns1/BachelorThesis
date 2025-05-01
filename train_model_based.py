@@ -5,14 +5,14 @@ import pygame
 from agent import Agent
 from env_manager import EnvironmentManager
 from model import Model
+from transitions.transition_method import Transition_Method
 
 import numpy as np
 
 from util.cluster_visualizer import ClusterVisualizer
+from util.clustering_alg import Clustering_Type
 from util.logger import write_to_json
 from util.reward_visualizer import plot_rewards
-from util.clustering_alg import Clustering_Type
-from transitions.transition_method import Transition_Method
 
 
 def train_model_based_agent(
@@ -77,14 +77,14 @@ def train_model_based_agent(
             action_rewards, action_weights = agent.compute_action_rewards(
                 state, states_mean, states_std
             )
-            #agent.exploration_rate = max(0.05, 0.30 * (epsilon_decay**episodes))
+            # agent.exploration_rate = max(0.05, 0.30 * (epsilon_decay**episodes))
 
             action = agent.get_action(action_rewards, action_weights)
 
             actions.append(action)
             prev_state = state.copy()
             state, reward, terminated, truncated, info = env_manager.step(action)
-            
+
             actual_delta = state - prev_state
             agent.update_approximation(action, actual_delta)
 
@@ -101,7 +101,11 @@ def train_model_based_agent(
                     end = time.time()
                     print("Time :{}".format(end - start))
 
-                    model.cluster_states(k=k, gaussian_width=gaussian_width_rewards, cluster_type=Clustering_Type.K_Means)
+                    model.cluster_states(
+                        k=k,
+                        gaussian_width=gaussian_width_rewards,
+                        cluster_type=Clustering_Type.K_Means,
+                    )
 
                     agent.testing = True
 
@@ -110,7 +114,7 @@ def train_model_based_agent(
 
                         cluster_visualizer = ClusterVisualizer(model=model)
 
-                        #cluster_visualizer.plot_clusters()
+                        # cluster_visualizer.plot_clusters()
                         cluster_visualizer.plot_reward_distribution_per_cluster()
                         cluster_visualizer.plot_rewards_before_clustering()
                         cluster_visualizer.plot_rewards_after_clustering()
@@ -120,9 +124,9 @@ def train_model_based_agent(
                     episodes = -1
                     finished_training = True
 
-                    #env_manager = EnvironmentManager(
+                    # env_manager = EnvironmentManager(
                     #    render_mode="human", environment=environment, seed=testing_seed
-                    #)
+                    # )
 
                 elif episodes < training_time and not finished_training:
                     model.update_model(states, actions, rewards)

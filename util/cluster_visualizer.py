@@ -1,3 +1,6 @@
+import pandas as pd
+import plotly.express as px
+import seaborn as sns
 from mpl_toolkits.mplot3d import Axes3D
 
 import numpy as np
@@ -8,10 +11,6 @@ from matplotlib import colormaps
 from sklearn.cluster import AgglomerativeClustering
 from sklearn.manifold import TSNE
 
-import matplotlib.pyplot as plt
-import seaborn as sns
-import pandas as pd
-import plotly.express as px
 
 class ClusterVisualizer:
     def __init__(self, model):
@@ -35,7 +34,7 @@ class ClusterVisualizer:
             cmap="viridis",
             s=25,
             alpha=0.8,
-            edgecolors="k"
+            edgecolors="k",
         )
 
         cbar1 = plt.colorbar(scatter1, ax=axes[0])
@@ -60,7 +59,7 @@ class ClusterVisualizer:
             cmap="viridis",
             s=25,
             alpha=0.8,
-            edgecolors="k"
+            edgecolors="k",
         )
 
         cbar2 = plt.colorbar(scatter2, ax=axes[1])
@@ -83,21 +82,31 @@ class ClusterVisualizer:
 
         plt.show()
 
-    def plot_reward_distribution_per_cluster(self, interactive=False, top_n_clusters=50):
+    def plot_reward_distribution_per_cluster(
+        self, interactive=False, top_n_clusters=50
+    ):
         # Create a DataFrame for easier plotting
-        df = pd.DataFrame({
-            "Cluster": self.model.cluster_labels,
-            "Reward": self.model.original_rewards
-        })
+        df = pd.DataFrame(
+            {
+                "Cluster": self.model.cluster_labels,
+                "Reward": self.model.original_rewards,
+            }
+        )
 
         # Optional: Reduce to top-N clusters by size
         if top_n_clusters is not None:
-            top_clusters = df['Cluster'].value_counts().nlargest(top_n_clusters).index
-            df = df[df['Cluster'].isin(top_clusters)]
+            top_clusters = df["Cluster"].value_counts().nlargest(top_n_clusters).index
+            df = df[df["Cluster"].isin(top_clusters)]
 
         if interactive:
             # Interactive Plotly box plot
-            fig = px.box(df, x="Cluster", y="Reward", points="outliers", title="Reward Distribution per Cluster")
+            fig = px.box(
+                df,
+                x="Cluster",
+                y="Reward",
+                points="outliers",
+                title="Reward Distribution per Cluster",
+            )
             fig.update_layout(xaxis_title="Cluster ID", yaxis_title="Original Reward")
             fig.show()
         else:

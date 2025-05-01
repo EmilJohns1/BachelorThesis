@@ -1,12 +1,12 @@
 import random
-import numpy as np
 from collections import deque
-
 import torch
 import torch.nn as nn
 import torch.optim as optim
-
 from env_manager import EnvironmentManager
+
+import numpy as np
+
 from util.logger import write_to_json
 from util.reward_visualizer import plot_rewards
 
@@ -19,7 +19,7 @@ class DQNNetwork(nn.Module):
             nn.ReLU(),
             nn.Linear(hidden_size, hidden_size),
             nn.ReLU(),
-            nn.Linear(hidden_size, action_dim)
+            nn.Linear(hidden_size, action_dim),
         )
 
     def forward(self, x):
@@ -41,7 +41,7 @@ class ReplayBuffer:
             np.array(actions),
             np.array(rewards, dtype=np.float32),
             np.array(next_states),
-            np.array(dones, dtype=np.float32)
+            np.array(dones, dtype=np.float32),
         )
 
     def __len__(self):
@@ -52,6 +52,7 @@ class DQNAgent:
     """
     DQN Agent that interacts with the environment and learns from experiences.
     """
+
     def __init__(
         self,
         state_dim,
@@ -63,7 +64,7 @@ class DQNAgent:
         epsilon_decay=5,
         buffer_capacity=10000,
         batch_size=64,
-        target_update_freq=100
+        target_update_freq=100,
     ):
         self.state_dim = state_dim
         self.action_dim = action_dim
@@ -92,7 +93,7 @@ class DQNAgent:
         self.epsilon_step += 1
         self.epsilon = max(
             self.epsilon_end,
-            1.0 - (self.epsilon_step / self.epsilon_decay) * (1.0 - self.epsilon_end)
+            1.0 - (self.epsilon_step / self.epsilon_decay) * (1.0 - self.epsilon_end),
         )
         if random.random() < self.epsilon:
             return random.randint(0, self.action_dim - 1)
@@ -109,7 +110,9 @@ class DQNAgent:
         if len(self.replay_buffer) < self.batch_size:
             return
 
-        states, actions, rewards, next_states, dones = self.replay_buffer.sample(self.batch_size)
+        states, actions, rewards, next_states, dones = self.replay_buffer.sample(
+            self.batch_size
+        )
 
         states_tensor = torch.FloatTensor(states).to(self.device)
         actions_tensor = torch.LongTensor(actions).to(self.device)
@@ -123,7 +126,9 @@ class DQNAgent:
         with torch.no_grad():
             next_q_values = self.target_net(next_states_tensor)
             next_q_value = next_q_values.max(dim=1, keepdim=True)[0]
-            target_q_value = rewards_tensor + self.gamma * (1.0 - dones_tensor) * next_q_value
+            target_q_value = (
+                rewards_tensor + self.gamma * (1.0 - dones_tensor) * next_q_value
+            )
 
         loss = nn.MSELoss()(q_value, target_q_value)
 
@@ -154,12 +159,13 @@ def train_dqn_cartpole(
     buffer_capacity=10000,
     batch_size=64,
     target_update_freq=100,
-    seed=random.randint(0, 2 ** 32 - 1)
+    seed=random.randint(0, 2**32 - 1),
 ):
 
-
     # Create EnvironmentManager for training
-    env_manager = EnvironmentManager(render_mode=None, seed=seed, environment="CartPole-v1")
+    env_manager = EnvironmentManager(
+        render_mode=None, seed=seed, environment="CartPole-v1"
+    )
     state_dim = env_manager.env.observation_space.shape[0]
     action_dim = env_manager.env.action_space.n
     agent = DQNAgent(
@@ -172,7 +178,7 @@ def train_dqn_cartpole(
         epsilon_decay=epsilon_decay,
         buffer_capacity=buffer_capacity,
         batch_size=batch_size,
-        target_update_freq=target_update_freq
+        target_update_freq=target_update_freq,
     )
 
     episode_rewards = []
@@ -199,7 +205,6 @@ def train_dqn_cartpole(
         episode_rewards.append(episode_reward)
         print(f"Episode {ep+1}, Reward: {episode_reward}, Epsilon: {agent.epsilon:.3f}")
 
-
     data = {
         "episode_rewards": episode_rewards,
         "parameters": {
@@ -212,8 +217,8 @@ def train_dqn_cartpole(
             "epsilon_decay": epsilon_decay,
             "buffer_capacity": buffer_capacity,
             "batch_size": batch_size,
-            "target_update_freq": target_update_freq
-        }
+            "target_update_freq": target_update_freq,
+        },
     }
     write_to_json(data)
     plot_rewards(episode_rewards)
