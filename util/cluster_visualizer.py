@@ -8,6 +8,10 @@ from matplotlib import colormaps
 from sklearn.cluster import AgglomerativeClustering
 from sklearn.manifold import TSNE
 
+import matplotlib.pyplot as plt
+import seaborn as sns
+import pandas as pd
+import plotly.express as px
 
 class ClusterVisualizer:
     def __init__(self, model):
@@ -79,17 +83,46 @@ class ClusterVisualizer:
 
         plt.show()
 
-    def plot_rewards(self):
-        if self.model.states.shape[1] < 2:
-            print("Insufficient dimensions to plot rewards.")
+    def plot_reward_distribution_per_cluster(self, interactive=False, top_n_clusters=50):
+        # Create a DataFrame for easier plotting
+        df = pd.DataFrame({
+            "Cluster": self.model.cluster_labels,
+            "Reward": self.model.original_rewards
+        })
+
+        # Optional: Reduce to top-N clusters by size
+        if top_n_clusters is not None:
+            top_clusters = df['Cluster'].value_counts().nlargest(top_n_clusters).index
+            df = df[df['Cluster'].isin(top_clusters)]
+
+        if interactive:
+            # Interactive Plotly box plot
+            fig = px.box(df, x="Cluster", y="Reward", points="outliers", title="Reward Distribution per Cluster")
+            fig.update_layout(xaxis_title="Cluster ID", yaxis_title="Original Reward")
+            fig.show()
+        else:
+            # Static Seaborn box plot
+            plt.figure(figsize=(12, 7))
+            sns.boxplot(x="Cluster", y="Reward", data=df)
+            plt.xticks(rotation=90)
+            plt.xlabel("Cluster ID")
+            plt.ylabel("Original Reward")
+            plt.title("Reward Distribution per Cluster")
+            plt.grid(True)
+            plt.tight_layout()
+            plt.show()
+
+    def plot_rewards_before_clustering(self):
+        if self.model.original_states.shape[1] < 2:
+            print("Insufficient dimensions to plot original states.")
             return
 
         tsne = TSNE(n_components=2, random_state=42)
-        reduced_states = tsne.fit_transform(self.model.states)
-        rewards = np.array(self.model.rewards)
+        reduced_states = tsne.fit_transform(self.model.original_states)
+        rewards = np.array(self.model.original_rewards)
 
         fig = plt.figure(figsize=(10, 7))
-        ax = fig.add_subplot(111, projection="3d")
+        ax = fig.add_subplot(111)
 
         scatter = ax.scatter(
             reduced_states[:, 0],
@@ -102,8 +135,63 @@ class ClusterVisualizer:
 
         ax.set_xlabel("TSNE Feature 1")
         ax.set_ylabel("TSNE Feature 2")
-        ax.set_zlabel("TSNE Feature 3")
-        ax.set_title("3D Rewards Visualization using TSNE")
+        ax.set_title("Pre-Clustering TSNE: States vs. Rewards")
+        fig.colorbar(scatter, label="Reward Value")
+
+        plt.show()
+
+    def plot_rewards_after_clustering(self):
+        if self.model.original_states.shape[1] < 2:
+            print("Insufficient dimensions to plot original states.")
+            return
+
+        tsne = TSNE(n_components=2, random_state=42)
+        reduced_states = tsne.fit_transform(self.model.original_states)
+        rewards = np.array(self.model.original_rewards)
+
+        fig = plt.figure(figsize=(10, 7))
+        ax = fig.add_subplot(111)
+
+        scatter = ax.scatter(
+            reduced_states[:, 0],
+            reduced_states[:, 1],
+            c=rewards,
+            cmap="coolwarm",
+            alpha=0.8,
+            s=10,
+        )
+
+        ax.set_xlabel("TSNE Feature 1")
+        ax.set_ylabel("TSNE Feature 2")
+        ax.set_title("Pre-Clustering TSNE: States vs. Rewards")
+        fig.colorbar(scatter, label="Reward Value")
+
+        plt.show()
+
+    def plot_rewards_after_clustering(self):
+        if self.model.clustered_states.shape[1] < 2:
+            print("Insufficient dimensions to plot rewards.")
+            return
+
+        tsne = TSNE(n_components=2, random_state=42)
+        reduced_states = tsne.fit_transform(self.model.clustered_states)
+        rewards = np.array(self.model.rewards)
+
+        fig = plt.figure(figsize=(10, 7))
+        ax = fig.add_subplot(111)
+
+        scatter = ax.scatter(
+            reduced_states[:, 0],
+            reduced_states[:, 1],
+            c=rewards,
+            cmap="coolwarm",
+            alpha=0.8,
+            s=10,
+        )
+
+        ax.set_xlabel("TSNE Feature 1")
+        ax.set_ylabel("TSNE Feature 2")
+        ax.set_title("2D Rewards Visualization using TSNE")
         fig.colorbar(scatter, label="Reward Value")
 
         plt.show()
