@@ -100,11 +100,15 @@ def plot_multiple_runs(folder_name, title, field, block=True):
     plt.legend()
     plt.show(block=block)
 
+
 def plot_avg_rewards_recursive(root_folder, field="testing_rewards", block=True):
     import os
-    import json
+
     import numpy as np
+
     import matplotlib.pyplot as plt
+
+    import json
 
     folders = []
     for dirpath, _, filenames in os.walk(root_folder):
@@ -129,10 +133,15 @@ def plot_avg_rewards_recursive(root_folder, field="testing_rewards", block=True)
 
         mean_rewards = np.mean(all_rewards, axis=0)
         running_means = np.cumsum(mean_rewards) / np.arange(1, len(mean_rewards) + 1)
-        running_stds = [np.std(mean_rewards[:i+1]) for i in range(len(mean_rewards))]
+        running_stds = [np.std(mean_rewards[: i + 1]) for i in range(len(mean_rewards))]
 
         plt.figure(figsize=(10, 6))
-        plt.plot(range(1, len(running_means) + 1), running_means, label="Running Mean", color="black")
+        plt.plot(
+            range(1, len(running_means) + 1),
+            running_means,
+            label="Running Mean",
+            color="black",
+        )
         plt.fill_between(
             range(1, len(running_means) + 1),
             np.array(running_means) - np.array(running_stds),

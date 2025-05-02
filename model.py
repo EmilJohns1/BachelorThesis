@@ -1,21 +1,25 @@
+import copy
 from collections import defaultdict
 import gymnasium as gym
-from scipy.special import log_softmax, softmax
-from sklearn.linear_model import LinearRegression
-from sklearn.mixture import GaussianMixture
+from scipy.special import log_softmax
+from scipy.special import softmax
+from clusterer import Clusterer
+from transitions.transition_method import Transition_Method
+from transitions.transition_model import factory
 
 import numpy as np
-import copy
+
 import matplotlib.pyplot as plt
 
 from sklearn.cluster import KMeans
 from sklearn.cluster import MiniBatchKMeans
 from sklearn.cluster import k_means
-from clusterer import Clusterer
+from sklearn.linear_model import LinearRegression
+from sklearn.mixture import GaussianMixture
+
 from util.cluster_visualizer import ClusterVisualizer
 from util.clustering_alg import Clustering_Type
-from transitions.transition_model import factory
-from transitions.transition_method import Transition_Method
+
 
 class Model:
     def __init__(
@@ -39,7 +43,14 @@ class Model:
             raise ValueError("Unsupported observation space type!")
         self.state_dimensions = obs_dim
         self.states: np.ndarray = np.empty((0, obs_dim))  # States are stored here
-        self.clusterer = Clusterer(K=k, D=obs_dim, sigma=sigma, lambda_=0.5, learning_rate=0.02, action_space_n=action_space_n)
+        self.clusterer = Clusterer(
+            K=k,
+            D=obs_dim,
+            sigma=sigma,
+            lambda_=0.5,
+            learning_rate=0.02,
+            action_space_n=action_space_n,
+        )
         self.original_states: np.ndarray = np.empty(
             (0, obs_dim)
         )  # States are stored here
@@ -49,7 +60,9 @@ class Model:
 
         self.actions: list[int] = list(range(action_space_n))
 
-        self.transition_model = factory(method=transition_method, action_space_n=action_space_n)
+        self.transition_model = factory(
+            method=transition_method, action_space_n=action_space_n
+        )
 
         self.new_transitions_index = np.zeros(len(self.actions), dtype=int)
 
@@ -79,18 +92,23 @@ class Model:
             if i > 0:
                 prev_state_index = len(self.states) - 2
                 current_state_index = len(self.states) - 1
-                self.transition_model.update_transitions(actions[i-1], 
-                                                         (prev_state_index, self.states[prev_state_index]), 
-                                                         (current_state_index, self.states[current_state_index])
-                                                         )
+                self.transition_model.update_transitions(
+                    actions[i - 1],
+                    (prev_state_index, self.states[prev_state_index]),
+                    (current_state_index, self.states[current_state_index]),
+                )
 
     def get_transition_data(self, state, action):
-        return (self.transition_model.get_transition_center(state, action), 
-                self.transition_model.get_query_points(action, self.states), 
-                self.transition_model.get_query_point_rewards(action, self.rewards))
-    
+        return (
+            self.transition_model.get_transition_center(state, action),
+            self.transition_model.get_query_points(action, self.states),
+            self.transition_model.get_query_point_rewards(action, self.rewards),
+        )
+
     def check_transition_error(self, action, actual_delta, error_threshold):
-        self.transition_model.update_predictions(action, actual_delta, error_threshold, self.states)
+        self.transition_model.update_predictions(
+            action, actual_delta, error_threshold, self.states
+        )
 
     def add_state(self, new_state):
         self.states = np.vstack((self.states, new_state))
@@ -114,10 +132,12 @@ class Model:
         shifted_rewards = rewards + (new_max - max_reward)
 
         return shifted_rewards
-    
+
     def scaled_log_softmax(self):
         log_softmax_rewards = log_softmax(self.rewards)
-        scaled_rewards = self.scale_rewards(log_softmaxed_rewards=log_softmax_rewards, new_max=3)
+        scaled_rewards = self.scale_rewards(
+            log_softmaxed_rewards=log_softmax_rewards, new_max=3
+        )
         return np.exp(scaled_rewards)
 
     def find_optimal_k(self, states, rewards):
@@ -179,11 +199,10 @@ class Model:
 
         states_array = self.states
         new_rewards = softmax(self.rewards)
-        
+
         if np.any(new_rewards == 0):
             print("Warning: Zero values detected in new_rewards!")
             print("Indices with zero values:", np.where(new_rewards == 0))
-
 
         if self.find_k:
             print("Running elbow method")
@@ -212,18 +231,17 @@ class Model:
         assert self.k == len(self.clustered_states)
         states_array = np.array(self.states)
         new_states = self.transition_model.cluster_transitions(
-            states_array=states_array, 
+            states_array=states_array,
             clustered_states=self.clustered_states,
             cluster_labels=self.cluster_labels,
             new_states=np.copy(self.clustered_states),
             k=self.k,
-            gaussian_width=gaussian_width
-            )
-        
+            gaussian_width=gaussian_width,
+        )
+
         num_clusters = len(self.clustered_states)
         cluster_rewards = np.zeros(num_clusters)
         cluster_weights = np.zeros(num_clusters)  # Sum of weights for normalization
-
 
         for i, centroid in enumerate(self.clustered_states):
             # Compute distances between centroid and all states in the cluster
@@ -260,17 +278,17 @@ class Model:
         self.original_states = self.states
         self.original_rewards = self.rewards
         print(f"Total states: {len(self.states)}")
-        
+
         X = self.states
         X_rewards = self.rewards
-        if self.using_clusters: # Exclude the centroids from calculations
-            X = self.states[k:]  
+        if self.using_clusters:  # Exclude the centroids from calculations
+            X = self.states[k:]
             X_rewards = self.rewards[k:]
-        
+
         print("Running online clustering")
         for i in range(1):
             self.clusterer.update(X=X, X_rewards=X_rewards)
-        
+
         print("Updating transitions")
         # For each action, slice from the stored new_transitions_index for that action,
         # and re-index by subtracting k.
@@ -278,34 +296,46 @@ class Model:
         transitions_to_new = []
         for i, _ in enumerate(self.actions):
             transitions_from_new.append(
-                [x - k for x in self.state_action_transitions_from[i][self.new_transitions_index[i]:]]
+                [
+                    x - k
+                    for x in self.state_action_transitions_from[i][
+                        self.new_transitions_index[i] :
+                    ]
+                ]
             )
             transitions_to_new.append(
-                [x - k for x in self.state_action_transitions_to[i][self.new_transitions_index[i]:]]
+                [
+                    x - k
+                    for x in self.state_action_transitions_to[i][
+                        self.new_transitions_index[i] :
+                    ]
+                ]
             )
-        
+
         self.clusterer.update_transitions(
-            x=X, 
+            x=X,
             state_action_transitions_from=transitions_from_new,
             state_action_transitions_to=transitions_to_new,
-            threshold=5e-1
+            threshold=5e-1,
         )
-        
+
         # Get the updated centroids, rewards, and transitions from the clusterer.
-        new_states, new_rewards, new_transitions_from, new_transitions_to = self.clusterer.get_model_attributes()
-        
+        new_states, new_rewards, new_transitions_from, new_transitions_to = (
+            self.clusterer.get_model_attributes()
+        )
+
         self.states = copy.deepcopy(new_states)
         self.rewards = copy.deepcopy(new_rewards)
         self.state_action_transitions_from = copy.deepcopy(new_transitions_from)
         self.state_action_transitions_to = copy.deepcopy(new_transitions_to)
-        
+
         # Update the new_transitions_index array for each action.
         # Each element now holds the length of the transitions list for that action.
         new_indices = []
         for i, _ in enumerate(self.actions):
             new_indices.append(len(new_transitions_from[i]))
         self.new_transitions_index = np.array(new_indices)
-        
+
         self.states_mean = np.mean(self.states, axis=0)
         self.states_std = np.std(self.states, axis=0)
         self.using_clusters = True
@@ -317,7 +347,12 @@ class Model:
 
         states_array = self.states
 
-        gmm = GaussianMixture(n_components=self.k, covariance_type='full', random_state=42, init_params="kmeans")
+        gmm = GaussianMixture(
+            n_components=self.k,
+            covariance_type="full",
+            random_state=42,
+            init_params="kmeans",
+        )
         gmm.fit(states_array)
 
         self.clustered_states = gmm.means_
@@ -327,13 +362,16 @@ class Model:
     def cluster_states(self, k, gaussian_width, cluster_type):
         if cluster_type is Clustering_Type.K_Means:
             self.run_k_means()
-            self.update_transitions_and_rewards_for_clusters(gaussian_width=gaussian_width)
+            self.update_transitions_and_rewards_for_clusters(
+                gaussian_width=gaussian_width
+            )
         elif cluster_type is Clustering_Type.Online_Clustering:
             self.run_online_clustering(k=k, gaussian_width=gaussian_width)
         elif cluster_type is Clustering_Type.Gaussian_Mixture:
             self.run_gaussian_mixture()
-            self.update_transitions_and_rewards_for_clusters(gaussian_width=gaussian_width)
+            self.update_transitions_and_rewards_for_clusters(
+                gaussian_width=gaussian_width
+            )
 
         self.using_clusters = True
-        #self.update_splines()
-        
+        # self.update_splines()

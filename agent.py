@@ -1,19 +1,16 @@
+from time import perf_counter
 import gymnasium as gym
 
 import numpy as np
 
-from time import perf_counter
-
 
 class Agent:
-    def __init__(
-        self, model, gaussian_width=0.5, exploration_rate=0.1
-    ):
+    def __init__(self, model, gaussian_width=0.5, exploration_rate=0.1):
         self.model = model
         self.gaussian_width = gaussian_width
         self.exploration_rate = exploration_rate
         self.testing = False
-        self.predicted_deltas = {} # Used to adjust splines in the model
+        self.predicted_deltas = {}  # Used to adjust splines in the model
 
     def normalize_states(self):
         states_mean = np.zeros(self.model.state_dimensions)
@@ -34,14 +31,27 @@ class Agent:
 
         for action in self.model.actions:
             if self.model.transition_model.has_transitions(action):
-                (center, query_points, query_point_rewards) = self.model.get_transition_data(state, action)
+                (center, query_points, query_point_rewards) = (
+                    self.model.get_transition_data(state, action)
+                )
 
-                weight = np.exp(-np.sum(np.square((center - states_mean) / states_std - (query_points - states_mean) / states_std), axis=1) / self.gaussian_width)
+                weight = np.exp(
+                    -np.sum(
+                        np.square(
+                            (center - states_mean) / states_std
+                            - (query_points - states_mean) / states_std
+                        ),
+                        axis=1,
+                    )
+                    / self.gaussian_width
+                )
 
                 sum_weight = np.sum(weight)
                 if sum_weight > 0:
                     action_weights[action] = sum_weight
-                    action_rewards[action] = np.sum(weight * query_point_rewards) / sum_weight
+                    action_rewards[action] = (
+                        np.sum(weight * query_point_rewards) / sum_weight
+                    )
         return action_rewards, action_weights
 
     def get_action(self, action_rewards, action_weights):
@@ -49,7 +59,7 @@ class Agent:
         if isinstance(self.model.actions, list):
             if self.testing:
                 return np.argmax(action_rewards)
-            if np.any(action_weights == 0): 
+            if np.any(action_weights == 0):
                 return np.random.choice(actions_array[np.where(action_weights == 0)[0]])
             if np.random.rand() < self.exploration_rate:
                 return np.random.choice(actions_array)
@@ -60,7 +70,7 @@ class Agent:
             return np.random.uniform(
                 actions_array.low, actions_array.high, size=action_dim
             )
-        
+
     def update_approximation(self, action, actual_delta, error_threshold=0.01):
         if not self.testing:
             self.model.check_transition_error(action, actual_delta, error_threshold)

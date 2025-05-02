@@ -1,5 +1,6 @@
 import numpy as np
 
+
 class PositionalEncoder:
     def __init__(self, d_model=4):
         self.d_model = d_model
