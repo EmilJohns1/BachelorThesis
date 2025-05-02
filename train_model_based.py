@@ -26,7 +26,7 @@ def train_model_based_agent(
         discount_factor = 1.0
         epsilon_decay = 0.999
         k = 500
-        gaussian_width_rewards = 3.0
+        gaussian_width_rewards = 0.3
         training_seed = random.randint(0, 2**32 - 1)
         testing_seed = random.randint(0, 2**32 - 1)
         comments = ""
@@ -52,8 +52,9 @@ def train_model_based_agent(
             lower_k=lower_k,
             upper_k=upper_k,
             step=step,
+            transition_method=Transition_Method.Direct_Transition_Mapping
         )
-        agent = Agent(model)
+        agent = Agent(model=model, gaussian_width=gaussian_width_rewards)
 
         rewards = 0.0
         actions = []
@@ -115,9 +116,9 @@ def train_model_based_agent(
                         cluster_visualizer = ClusterVisualizer(model=model)
 
                         # cluster_visualizer.plot_clusters()
-                        cluster_visualizer.plot_reward_distribution_per_cluster()
+                        #cluster_visualizer.plot_reward_distribution_per_cluster()
                         cluster_visualizer.plot_rewards_before_clustering()
-                        cluster_visualizer.plot_rewards_after_clustering()
+                        #cluster_visualizer.plot_rewards_after_clustering()
 
                     training_rewards = episode_rewards
                     episode_rewards = []
@@ -148,7 +149,7 @@ def train_model_based_agent(
                         "training_rewards": training_rewards,
                         "testing_rewards": testing_rewards,
                     }
-                    write_to_json(data)
+                    write_to_json(data, "experiment_1/gw_0_3")
 
                     if show_clusters_and_rewards:
                         plot_rewards(episode_rewards=episode_rewards)
