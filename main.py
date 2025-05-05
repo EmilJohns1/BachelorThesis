@@ -5,7 +5,6 @@ from train_model_based import train_model_based_agent
 
 # Model-free agents
 from modelfree.dqn_learning_agent import train_dqn
-from modelfree.dqn_learning_encoder import train_dqn_encoder
 from modelfree.q_learning_agent import train_q_learning
 from modelfree.q_learning_encoder import train_rbf_q_learning
 
@@ -25,7 +24,7 @@ def main(args):
     elif args.agent == "encoder-q-learning":
         train_rbf_q_learning(env_name=args.env, episodes=args.training_time)
     elif args.agent == "dqn-encoder":
-        train_dqn_encoder(env_name=args.env, episodes=args.training_time, use_encoder=True)
+        train_dqn(env_name=args.env, episodes=args.training_time, use_encoder=True)
     elif args.agent == "dqn":
         train_dqn(env_name=args.env, episodes=args.training_time)
     elif args.agent == "model-based":

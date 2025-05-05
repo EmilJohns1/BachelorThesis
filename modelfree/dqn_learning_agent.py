@@ -1,5 +1,3 @@
-# The baseline DQN used for camparable experiments with the modelbased agent.
-
 import random
 import numpy as np
 from collections import deque
@@ -14,9 +12,21 @@ from util.reward_visualizer import plot_rewards
 
 
 def flatten_state(state):
+    return np.array(state).flatten()
 
-    arr = np.array(state)
-    return arr.flatten()
+
+class PositionalEncoder:
+    def __init__(self, input_dim, num_frequencies=10):
+        self.input_dim = input_dim
+        self.num_frequencies = num_frequencies
+        self.freq_bands = 2.0 ** np.arange(num_frequencies)
+
+    def encode(self, x: np.ndarray) -> np.ndarray:
+        encoded = [x]
+        for freq in self.freq_bands:
+            encoded.append(np.sin(freq * x))
+            encoded.append(np.cos(freq * x))
+        return np.concatenate(encoded)
 
 
 class DQNNetwork(nn.Module):
@@ -69,12 +79,22 @@ class DQNAgent:
         buffer_capacity=10000,
         batch_size=64,
         target_update_freq=100,
+        use_encoder=False,
+        pos_enc_freqs=10
     ):
-        # Determine input size
+        # Determine raw input dimension
         if isinstance(obs_shape, (tuple, list)):
-            self.input_dim = int(np.prod(obs_shape))
+            self.raw_dim = int(np.prod(obs_shape))
         else:
-            self.input_dim = int(obs_shape)
+            self.raw_dim = int(obs_shape)
+
+        self.use_encoder = use_encoder
+        self.pos_enc_freqs = pos_enc_freqs
+        if self.use_encoder:
+            self.pos_encoder = PositionalEncoder(self.raw_dim, pos_enc_freqs)
+            self.input_dim = self.raw_dim * (1 + 2 * pos_enc_freqs)
+        else:
+            self.input_dim = self.raw_dim
 
         self.action_dim = action_dim
         self.gamma = gamma
@@ -90,16 +110,25 @@ class DQNAgent:
         self.target_net.load_state_dict(self.main_net.state_dict())
         self.target_net.eval()
 
+        # Optimizer & replay buffer
         self.optimizer = optim.Adam(self.main_net.parameters(), lr=lr)
         self.replay_buffer = ReplayBuffer(capacity=buffer_capacity)
         self.target_update_freq = target_update_freq
         self.learn_step_counter = 0
 
+        # Device
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.main_net.to(self.device)
         self.target_net.to(self.device)
 
+    def process_state(self, state):
+        flat = flatten_state(state)
+        if self.use_encoder:
+            return self.pos_encoder.encode(flat)
+        return flat
+
     def select_action(self, state):
+        # Epsilon decay
         self.epsilon_step += 1
         self.epsilon = max(
             self.epsilon_end,
@@ -107,12 +136,11 @@ class DQNAgent:
         )
         if random.random() < self.epsilon:
             return random.randrange(self.action_dim)
-        else:
-            flat = flatten_state(state)
-            tensor = torch.FloatTensor(flat).unsqueeze(0).to(self.device)
-            with torch.no_grad():
-                q_vals = self.main_net(tensor)
-            return q_vals.argmax(dim=1).item()
+        proc = self.process_state(state)
+        tensor = torch.FloatTensor(proc).unsqueeze(0).to(self.device)
+        with torch.no_grad():
+            q_vals = self.main_net(tensor)
+        return q_vals.argmax(dim=1).item()
 
     def store(self, state, action, reward, next_state, done):
         self.replay_buffer.push(state, action, reward, next_state, done)
@@ -120,10 +148,9 @@ class DQNAgent:
     def update(self):
         if len(self.replay_buffer) < self.batch_size:
             return
-
         states, actions, rewards, next_states, dones = self.replay_buffer.sample(self.batch_size)
-        states = np.array([flatten_state(s) for s in states])
-        next_states = np.array([flatten_state(s) for s in next_states])
+        states = np.array([self.process_state(s) for s in states])
+        next_states = np.array([self.process_state(s) for s in next_states])
 
         states_t = torch.FloatTensor(states).to(self.device)
         actions_t = torch.LongTensor(actions).unsqueeze(1).to(self.device)
@@ -168,10 +195,17 @@ def train_dqn(
     batch_size: int = 64,
     target_update_freq: int = 100,
     seed: int = None,
+    use_encoder: bool = False,
+    pos_enc_freqs: int = 10
 ):
 
     if seed is None:
         seed = random.randint(0, 2**32 - 1)
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(seed)
 
     env_manager = EnvironmentManager(
         render_mode=None,
@@ -192,26 +226,23 @@ def train_dqn(
         buffer_capacity=buffer_capacity,
         batch_size=batch_size,
         target_update_freq=target_update_freq,
+        use_encoder=use_encoder,
+        pos_enc_freqs=pos_enc_freqs
     )
 
     episode_rewards = []
-
     for ep in range(1, episodes + 1):
         state, _ = env_manager.reset()
         total_reward = 0
-
         for _ in range(max_steps):
             action = agent.select_action(state)
             next_state, reward, done, truncated, _ = env_manager.step(action)
             total_reward += reward
-
             agent.store(state, action, reward, next_state, done or truncated)
             agent.update()
-
             state = next_state
             if done or truncated:
                 break
-
         episode_rewards.append(total_reward)
         print(f"Episode {ep}/{episodes}  Reward: {total_reward:.2f}  Epsilon: {agent.epsilon:.3f}")
 
@@ -230,6 +261,8 @@ def train_dqn(
             "buffer_capacity": buffer_capacity,
             "batch_size": batch_size,
             "target_update_freq": target_update_freq,
+            "use_encoder": use_encoder,
+            "pos_enc_freqs": pos_enc_freqs
         }
     })
     plot_rewards(episode_rewards)
