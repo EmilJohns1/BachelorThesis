@@ -26,7 +26,7 @@ def train_model_based_agent(
         discount_factor = 1.0
         epsilon_decay = 0.999
         k = 500
-        gaussian_width_rewards = 3.0
+        gaussian_width_rewards = 0.3
         training_seed = random.randint(0, 2**32 - 1)
         testing_seed = random.randint(0, 2**32 - 1)
         comments = ""
@@ -51,9 +51,9 @@ def train_model_based_agent(
             find_k=find_k,
             lower_k=lower_k,
             upper_k=upper_k,
-            step=step,
+            step=step
         )
-        agent = Agent(model)
+        agent = Agent(model=model, gaussian_width=gaussian_width_rewards)
 
         rewards = 0.0
         actions = []
@@ -114,7 +114,7 @@ def train_model_based_agent(
 
                         cluster_visualizer = ClusterVisualizer(model=model)
 
-                        # cluster_visualizer.plot_clusters()
+                        cluster_visualizer.plot_clusters()
                         cluster_visualizer.plot_reward_distribution_per_cluster()
                         cluster_visualizer.plot_rewards_before_clustering()
                         cluster_visualizer.plot_rewards_after_clustering()
