@@ -51,8 +51,7 @@ def train_model_based_agent(
             find_k=find_k,
             lower_k=lower_k,
             upper_k=upper_k,
-            step=step,
-            transition_method=Transition_Method.Direct_Transition_Mapping
+            step=step
         )
         agent = Agent(model=model, gaussian_width=gaussian_width_rewards)
 
