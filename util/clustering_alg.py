@@ -1,5 +1,7 @@
-import enum 
+import enum
+
 
 class Clustering_Type(enum.Enum):
     K_Means = 1
     Online_Clustering = 2
+    Gaussian_Mixture = 3

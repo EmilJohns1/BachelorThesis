@@ -1,27 +1,31 @@
 # Baseline Q-Learning agent for CartPole-v1
 
 import random
-import numpy as np
-import gymnasium as gym
 import time
+import gymnasium as gym
+
+import numpy as np
 
 from util.logger import write_to_json
 from util.reward_visualizer import plot_rewards
+
 
 def create_bins():
     bins = [
         np.linspace(-2.4, 2.4, 6)[1:-1],
         np.linspace(-5.0, 5.0, 6)[1:-1],
         np.linspace(-0.418, 0.418, 6)[1:-1],
-        np.linspace(-3.5, 3.5, 6)[1:-1]
+        np.linspace(-3.5, 3.5, 6)[1:-1],
     ]
     return bins
+
 
 def discretize_state(state, bins):
     state_idx = []
     for i, val in enumerate(state):
         state_idx.append(np.digitize(val, bins[i]))
     return tuple(state_idx)
+
 
 class QLearningAgent:
     def __init__(self, action_space, state_bins,
@@ -78,7 +82,9 @@ def train_q_learning(env_name="CartPole-v1", episodes=100, seed=42):
             next_state, reward, done, truncated, _ = env.step(action)
             total_reward += reward
             next_discrete_state = discretize_state(next_state, bins)
-            agent.learn(discrete_state, action, reward, next_discrete_state, done or truncated)
+            agent.learn(
+                discrete_state, action, reward, next_discrete_state, done or truncated
+            )
             discrete_state = next_discrete_state
 
         episode_rewards.append(total_reward)
@@ -99,6 +105,7 @@ def train_q_learning(env_name="CartPole-v1", episodes=100, seed=42):
     write_to_json(data)
     plot_rewards(episode_rewards)
     env.close()
+
 
 if __name__ == "__main__":
     train_q_learning()
