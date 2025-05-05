@@ -14,7 +14,7 @@ from util.reward_visualizer import plot_rewards
 def flatten_state(state):
     return np.array(state).flatten()
 
-
+# Positional encoding. Trying to find out if it works better than baseline.
 class PositionalEncoder:
     def __init__(self, input_dim, num_frequencies=10):
         self.input_dim = input_dim
@@ -82,7 +82,7 @@ class DQNAgent:
         use_encoder=False,
         pos_enc_freqs=10
     ):
-        # Determine raw input dimension
+
         if isinstance(obs_shape, (tuple, list)):
             self.raw_dim = int(np.prod(obs_shape))
         else:
@@ -104,19 +104,19 @@ class DQNAgent:
         self.epsilon_step = 0
         self.batch_size = batch_size
 
-        # Networks
+
         self.main_net = DQNNetwork(self.input_dim, action_dim)
         self.target_net = DQNNetwork(self.input_dim, action_dim)
         self.target_net.load_state_dict(self.main_net.state_dict())
         self.target_net.eval()
 
-        # Optimizer & replay buffer
+
         self.optimizer = optim.Adam(self.main_net.parameters(), lr=lr)
         self.replay_buffer = ReplayBuffer(capacity=buffer_capacity)
         self.target_update_freq = target_update_freq
         self.learn_step_counter = 0
 
-        # Device
+
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.main_net.to(self.device)
         self.target_net.to(self.device)
@@ -128,7 +128,6 @@ class DQNAgent:
         return flat
 
     def select_action(self, state):
-        # Epsilon decay
         self.epsilon_step += 1
         self.epsilon = max(
             self.epsilon_end,
