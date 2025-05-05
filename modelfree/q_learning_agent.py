@@ -1,3 +1,5 @@
+# Baseline Q-Learning agent for CartPole-v1
+
 import random
 import numpy as np
 import gymnasium as gym

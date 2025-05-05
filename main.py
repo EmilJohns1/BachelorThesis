@@ -1,7 +1,17 @@
 import argparse
+
+
 from train_model_based import train_model_based_agent
-from qlearning_agent import train_q_learning
-from qlearning_encoder import train_rbf_q_learning
+
+# Model-free agents
+from modelfree.dqn_learning_agent import train_dqn
+from modelfree.dqn_learning_encoder import train_dqn_encoder
+from modelfree.q_learning_agent import train_q_learning
+from modelfree.q_learning_encoder import train_rbf_q_learning
+
+
+
+
 from util.reward_visualizer import plot_multiple_runs
 
 #plot_multiple_runs(folder_name="logs/gaussian_width_action_reward_2_0/clustering_width_0_5", title="0.5", field="testing_rewards", block=False)
@@ -14,8 +24,10 @@ def main(args):
         train_q_learning(env_name=args.env, episodes=args.training_time)
     elif args.agent == "encoder-q-learning":
         train_rbf_q_learning(env_name=args.env, episodes=args.training_time)
-    # elif args.agent == "dqn":
-    #     train_dqn(args.env)
+    elif args.agent == "dqn-encoder":
+        train_dqn_encoder(env_name=args.env, episodes=args.training_time, use_encoder=True)
+    elif args.agent == "dqn":
+        train_dqn(env_name=args.env, episodes=args.training_time)
     elif args.agent == "model-based":
         if args.find_optimal_k:
             find_k = True
@@ -41,7 +53,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--agent",
         type=str,
-        choices=["q-learning", "encoder-q-learning", "dqn", "model-based"],
+        choices=["q-learning", "encoder-q-learning", "dqn","dqn-encoder", "model-based"],
         required=True,
         help="Choose the RL agent",
     )

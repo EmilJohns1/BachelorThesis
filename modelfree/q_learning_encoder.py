@@ -7,7 +7,7 @@ from util.logger import write_to_json
 from util.reward_visualizer import plot_rewards
 
 class Neuron_Encoder:
-    def __init__(self, n=10, gaussian_width=0.4):
+    def __init__(self, n=5, gaussian_width=3.0):
         self.n = n
         self.gaussian_width = gaussian_width
         self.dim1 = np.linspace(-2.4, 2.4, n)

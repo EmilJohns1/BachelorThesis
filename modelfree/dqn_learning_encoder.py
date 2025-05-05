@@ -12,10 +12,10 @@ from util.reward_visualizer import plot_rewards
 
 
 class DQNNetwork(nn.Module):
-    def __init__(self, state_dim, action_dim, hidden_size=128):
+    def __init__(self, input_dim, action_dim, hidden_size=128):
         super().__init__()
         self.net = nn.Sequential(
-            nn.Linear(state_dim, hidden_size),
+            nn.Linear(input_dim, hidden_size),
             nn.ReLU(),
             nn.Linear(hidden_size, hidden_size),
             nn.ReLU(),
@@ -48,10 +48,25 @@ class ReplayBuffer:
         return len(self.buffer)
 
 
+class Neuron_Encoder:
+    def __init__(self, n=10):
+        self.dim1 = np.linspace(-2.4, 2.4, n)
+        self.dim2 = np.linspace(-5, 5, n)
+        self.dim3 = np.linspace(-0.21, 0.21, n)
+        self.dim4 = np.linspace(-4, 4, n)
+        self.codebooks = [self.dim1, self.dim2, self.dim3, self.dim4]
+
+    def encode(self, state):
+        gaussian_width = 0.4
+        encoded = []
+        for i, val in enumerate(state):
+            distances = val - self.codebooks[i]
+            weights = np.exp(-np.square(distances) / gaussian_width)
+            encoded.append(weights)
+        return np.concatenate(encoded)
+
+
 class DQNAgent:
-    """
-    DQN Agent that interacts with the environment and learns from experiences.
-    """
     def __init__(
         self,
         state_dim,
@@ -63,7 +78,9 @@ class DQNAgent:
         epsilon_decay=5,
         buffer_capacity=10000,
         batch_size=64,
-        target_update_freq=100
+        target_update_freq=100,
+        use_encoder=False,
+        encoder_n=10
     ):
         self.state_dim = state_dim
         self.action_dim = action_dim
@@ -73,9 +90,16 @@ class DQNAgent:
         self.epsilon_decay = epsilon_decay
         self.epsilon_step = 0
         self.batch_size = batch_size
+        self.use_encoder = use_encoder
 
-        self.main_net = DQNNetwork(state_dim, action_dim)
-        self.target_net = DQNNetwork(state_dim, action_dim)
+        if self.use_encoder:
+            self.encoder = Neuron_Encoder(n=encoder_n)
+            input_dim = encoder_n * 4  # 4 state variables
+        else:
+            input_dim = state_dim
+
+        self.main_net = DQNNetwork(input_dim, action_dim)
+        self.target_net = DQNNetwork(input_dim, action_dim)
         self.target_net.load_state_dict(self.main_net.state_dict())
         self.target_net.eval()
 
@@ -88,6 +112,12 @@ class DQNAgent:
         self.main_net.to(self.device)
         self.target_net.to(self.device)
 
+    def process_state(self, state):
+        if self.use_encoder:
+            return self.encoder.encode(state)
+        else:
+            return state
+
     def select_action(self, state):
         self.epsilon_step += 1
         self.epsilon = max(
@@ -97,7 +127,8 @@ class DQNAgent:
         if random.random() < self.epsilon:
             return random.randint(0, self.action_dim - 1)
         else:
-            state_tensor = torch.FloatTensor(state).unsqueeze(0).to(self.device)
+            processed_state = self.process_state(state)
+            state_tensor = torch.FloatTensor(processed_state).unsqueeze(0).to(self.device)
             with torch.no_grad():
                 q_values = self.main_net(state_tensor)
             return q_values.argmax(dim=1).item()
@@ -110,6 +141,11 @@ class DQNAgent:
             return
 
         states, actions, rewards, next_states, dones = self.replay_buffer.sample(self.batch_size)
+
+        # If using the encoder, process each state individually.
+        if self.use_encoder:
+            states = np.array([self.encoder.encode(s) for s in states])
+            next_states = np.array([self.encoder.encode(s) for s in next_states])
 
         states_tensor = torch.FloatTensor(states).to(self.device)
         actions_tensor = torch.LongTensor(actions).to(self.device)
@@ -143,7 +179,7 @@ class DQNAgent:
         self.target_net.load_state_dict(self.main_net.state_dict())
 
 
-def train_dqn_cartpole(
+def train_dqn_encoder(
     episodes=100,
     max_steps=500,
     lr=1e-3,
@@ -154,14 +190,13 @@ def train_dqn_cartpole(
     buffer_capacity=10000,
     batch_size=64,
     target_update_freq=100,
+    use_encoder=False,  # Set True to use the Neuron_Encoder
     seed=random.randint(0, 2 ** 32 - 1)
 ):
-
-
-    # Create EnvironmentManager for training
-    env_manager = EnvironmentManager(render_mode=None, seed=seed, environment="CartPole-v1")
+    env_manager = EnvironmentManager(env_name="CartPole-v1", render_mode=None, seed=seed)
     state_dim = env_manager.env.observation_space.shape[0]
     action_dim = env_manager.env.action_space.n
+
     agent = DQNAgent(
         state_dim,
         action_dim,
@@ -172,7 +207,8 @@ def train_dqn_cartpole(
         epsilon_decay=epsilon_decay,
         buffer_capacity=buffer_capacity,
         batch_size=batch_size,
-        target_update_freq=target_update_freq
+        target_update_freq=target_update_freq,
+        use_encoder=use_encoder
     )
 
     episode_rewards = []
@@ -199,7 +235,6 @@ def train_dqn_cartpole(
         episode_rewards.append(episode_reward)
         print(f"Episode {ep+1}, Reward: {episode_reward}, Epsilon: {agent.epsilon:.3f}")
 
-
     data = {
         "episode_rewards": episode_rewards,
         "parameters": {
@@ -212,7 +247,8 @@ def train_dqn_cartpole(
             "epsilon_decay": epsilon_decay,
             "buffer_capacity": buffer_capacity,
             "batch_size": batch_size,
-            "target_update_freq": target_update_freq
+            "target_update_freq": target_update_freq,
+            "use_encoder": use_encoder
         }
     }
     write_to_json(data)
@@ -231,4 +267,5 @@ def train_dqn_cartpole(
 
 
 if __name__ == "__main__":
-    train_dqn_cartpole()
+    # Set use_encoder=True to enable the neuron encoder
+    train_dqn_encoder(use_encoder=True)
