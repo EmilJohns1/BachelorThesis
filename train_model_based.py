@@ -115,10 +115,10 @@ def train_model_based_agent(
 
                         cluster_visualizer = ClusterVisualizer(model=model)
 
-                        # cluster_visualizer.plot_clusters()
-                        #cluster_visualizer.plot_reward_distribution_per_cluster()
+                        cluster_visualizer.plot_clusters()
+                        cluster_visualizer.plot_reward_distribution_per_cluster()
                         cluster_visualizer.plot_rewards_before_clustering()
-                        #cluster_visualizer.plot_rewards_after_clustering()
+                        cluster_visualizer.plot_rewards_after_clustering()
 
                     training_rewards = episode_rewards
                     episode_rewards = []
@@ -149,7 +149,7 @@ def train_model_based_agent(
                         "training_rewards": training_rewards,
                         "testing_rewards": testing_rewards,
                     }
-                    write_to_json(data, "experiment_1/gw_0_3")
+                    write_to_json(data)
 
                     if show_clusters_and_rewards:
                         plot_rewards(episode_rewards=episode_rewards)

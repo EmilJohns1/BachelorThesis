@@ -2,15 +2,6 @@ import argparse
 from train_model_based import train_model_based_agent
 from util.reward_visualizer import plot_multiple_runs, plot_avg_rewards_recursive, compare_experiments
 
-compare_experiments(
-    "./logs/experiment_1/gw_0_3",
-    "./logs/experiment_1/gw_1", 
-    "./logs/experiment_1/gw_01", 
-    "./logs/experiment_1/gw_2_5", 
-    "./logs/experiment_1/gw_5", 
-    "./logs/experiment_1/gw_05",
-    title="Experiment 1")
-
 def main(args):
     # if args.agent == "q-learning":
     #     train_q_learning(args.env)
