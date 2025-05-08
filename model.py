@@ -198,7 +198,8 @@ class Model:
         self.original_rewards = self.rewards
 
         states_array = self.states
-        new_rewards = softmax(self.rewards)
+        temperature = 50
+        new_rewards = softmax(self.rewards/temperature)
 
         if np.any(new_rewards == 0):
             print("Warning: Zero values detected in new_rewards!")
@@ -298,7 +299,7 @@ class Model:
             transitions_from_new.append(
                 [
                     x - k
-                    for x in self.state_action_transitions_from[i][
+                    for x in self.transition_model.state_action_transitions_from[i][
                         self.new_transitions_index[i] :
                     ]
                 ]
@@ -306,7 +307,7 @@ class Model:
             transitions_to_new.append(
                 [
                     x - k
-                    for x in self.state_action_transitions_to[i][
+                    for x in self.transition_model.state_action_transitions_to[i][
                         self.new_transitions_index[i] :
                     ]
                 ]
@@ -326,8 +327,8 @@ class Model:
 
         self.states = copy.deepcopy(new_states)
         self.rewards = copy.deepcopy(new_rewards)
-        self.state_action_transitions_from = copy.deepcopy(new_transitions_from)
-        self.state_action_transitions_to = copy.deepcopy(new_transitions_to)
+        self.transition_model.state_action_transitions_from = copy.deepcopy(new_transitions_from)
+        self.transition_model.state_action_transitions_to = copy.deepcopy(new_transitions_to)
 
         # Update the new_transitions_index array for each action.
         # Each element now holds the length of the transitions list for that action.
