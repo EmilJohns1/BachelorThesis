@@ -1,3 +1,5 @@
+# Baseline Q-Learning agent for CartPole-v1
+
 import random
 import time
 import gymnasium as gym
@@ -10,8 +12,8 @@ from util.reward_visualizer import plot_rewards
 
 def create_bins():
     bins = [
-        np.linspace(-4.8, 4.8, 6)[1:-1],
-        np.linspace(-3.0, 3.0, 6)[1:-1],
+        np.linspace(-2.4, 2.4, 6)[1:-1],
+        np.linspace(-5.0, 5.0, 6)[1:-1],
         np.linspace(-0.418, 0.418, 6)[1:-1],
         np.linspace(-3.5, 3.5, 6)[1:-1],
     ]
@@ -26,16 +28,10 @@ def discretize_state(state, bins):
 
 
 class QLearningAgent:
-    def __init__(
-        self,
-        action_space,
-        state_bins,
-        alpha=0.1,
-        gamma=0.99,
-        epsilon=1.0,
-        epsilon_min=0.01,
-        epsilon_decay=0.995,
-    ):
+    def __init__(self, action_space, state_bins,
+                 alpha=0.1, gamma=0.8,
+                 epsilon=1.0, epsilon_min=0.01,
+                 epsilon_decay=0.99):
         self.action_space = action_space
         self.state_bins = state_bins
         self.alpha = alpha
@@ -56,21 +52,18 @@ class QLearningAgent:
     def learn(self, state, action, reward, next_state, done):
         old_value = self.q_table[state][action]
         next_max = np.max(self.q_table[next_state])
-        # Q-learning update.
-        new_value = (1 - self.alpha) * old_value + self.alpha * (
-            reward + self.gamma * next_max * (not done)
-        )
+
+        new_value = (1 - self.alpha) * old_value + self.alpha * (reward + self.gamma * next_max * (not done))
         self.q_table[state][action] = new_value
-        # Decay epsilon if the episode is done.
+
         if done:
             self.epsilon = max(self.epsilon_min, self.epsilon * self.epsilon_decay)
 
-
-def train_q_learning(episodes=15000, seed=42):
+def train_q_learning(env_name="CartPole-v1", episodes=100, seed=42):
     np.random.seed(seed)
     random.seed(seed)
 
-    env = gym.make("CartPole-v1")
+    env = gym.make(env_name)
     env.reset(seed=seed)
 
     bins = create_bins()
@@ -107,7 +100,7 @@ def train_q_learning(episodes=15000, seed=42):
             "epsilon_min": agent.epsilon_min,
             "epsilon_decay": agent.epsilon_decay,
             "seed": seed,
-        },
+        }
     }
     write_to_json(data)
     plot_rewards(episode_rewards)
