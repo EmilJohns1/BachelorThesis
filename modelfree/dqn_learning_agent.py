@@ -1,18 +1,19 @@
 import random
-import numpy as np
 from collections import deque
-
 import torch
 import torch.nn as nn
 import torch.optim as optim
-
 from env_manager import EnvironmentManager
+
+import numpy as np
+
 from util.logger import write_to_json
 from util.reward_visualizer import plot_rewards
 
 
 def flatten_state(state):
     return np.array(state).flatten()
+
 
 # Positional encoding. Trying to find out if it works better than baseline.
 class PositionalEncoder:
@@ -37,7 +38,7 @@ class DQNNetwork(nn.Module):
             nn.ReLU(),
             nn.Linear(hidden_size, hidden_size),
             nn.ReLU(),
-            nn.Linear(hidden_size, action_dim)
+            nn.Linear(hidden_size, action_dim),
         )
 
     def forward(self, x):
@@ -59,7 +60,7 @@ class ReplayBuffer:
             np.array(actions),
             np.array(rewards, dtype=np.float32),
             np.array(next_states),
-            np.array(dones, dtype=np.float32)
+            np.array(dones, dtype=np.float32),
         )
 
     def __len__(self):
@@ -80,7 +81,7 @@ class DQNAgent:
         batch_size=64,
         target_update_freq=100,
         use_encoder=False,
-        pos_enc_freqs=10
+        pos_enc_freqs=10,
     ):
 
         if isinstance(obs_shape, (tuple, list)):
@@ -104,18 +105,15 @@ class DQNAgent:
         self.epsilon_step = 0
         self.batch_size = batch_size
 
-
         self.main_net = DQNNetwork(self.input_dim, action_dim)
         self.target_net = DQNNetwork(self.input_dim, action_dim)
         self.target_net.load_state_dict(self.main_net.state_dict())
         self.target_net.eval()
 
-
         self.optimizer = optim.Adam(self.main_net.parameters(), lr=lr)
         self.replay_buffer = ReplayBuffer(capacity=buffer_capacity)
         self.target_update_freq = target_update_freq
         self.learn_step_counter = 0
-
 
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.main_net.to(self.device)
@@ -131,7 +129,7 @@ class DQNAgent:
         self.epsilon_step += 1
         self.epsilon = max(
             self.epsilon_end,
-            self.epsilon - (1.0 - self.epsilon_end) / self.epsilon_decay
+            self.epsilon - (1.0 - self.epsilon_end) / self.epsilon_decay,
         )
         if random.random() < self.epsilon:
             return random.randrange(self.action_dim)
@@ -147,7 +145,9 @@ class DQNAgent:
     def update(self):
         if len(self.replay_buffer) < self.batch_size:
             return
-        states, actions, rewards, next_states, dones = self.replay_buffer.sample(self.batch_size)
+        states, actions, rewards, next_states, dones = self.replay_buffer.sample(
+            self.batch_size
+        )
         states = np.array([self.process_state(s) for s in states])
         next_states = np.array([self.process_state(s) for s in next_states])
 
@@ -195,7 +195,7 @@ def train_dqn(
     target_update_freq: int = 100,
     seed: int = None,
     use_encoder: bool = False,
-    pos_enc_freqs: int = 10
+    pos_enc_freqs: int = 10,
 ):
 
     if seed is None:
@@ -206,11 +206,7 @@ def train_dqn(
     if torch.cuda.is_available():
         torch.cuda.manual_seed_all(seed)
 
-    env_manager = EnvironmentManager(
-        render_mode=None,
-        seed=seed,
-        environment=env_name
-    )
+    env_manager = EnvironmentManager(render_mode=None, seed=seed, environment=env_name)
     obs_shape = env_manager.env.observation_space.shape
     action_dim = env_manager.env.action_space.n
 
@@ -226,7 +222,7 @@ def train_dqn(
         batch_size=batch_size,
         target_update_freq=target_update_freq,
         use_encoder=use_encoder,
-        pos_enc_freqs=pos_enc_freqs
+        pos_enc_freqs=pos_enc_freqs,
     )
 
     episode_rewards = []
@@ -243,35 +239,35 @@ def train_dqn(
             if done or truncated:
                 break
         episode_rewards.append(total_reward)
-        print(f"Episode {ep}/{episodes}  Reward: {total_reward:.2f}  Epsilon: {agent.epsilon:.3f}")
+        print(
+            f"Episode {ep}/{episodes}  Reward: {total_reward:.2f}  Epsilon: {agent.epsilon:.3f}"
+        )
 
     # Log & visualize
-    write_to_json({
-        "episode_rewards": episode_rewards,
-        "parameters": {
-            "env_name": env_name,
-            "episodes": episodes,
-            "max_steps": max_steps,
-            "lr": lr,
-            "gamma": gamma,
-            "epsilon_start": epsilon_start,
-            "epsilon_end": epsilon_end,
-            "epsilon_decay": epsilon_decay,
-            "buffer_capacity": buffer_capacity,
-            "batch_size": batch_size,
-            "target_update_freq": target_update_freq,
-            "use_encoder": use_encoder,
-            "pos_enc_freqs": pos_enc_freqs
+    write_to_json(
+        {
+            "episode_rewards": episode_rewards,
+            "parameters": {
+                "env_name": env_name,
+                "episodes": episodes,
+                "max_steps": max_steps,
+                "lr": lr,
+                "gamma": gamma,
+                "epsilon_start": epsilon_start,
+                "epsilon_end": epsilon_end,
+                "epsilon_decay": epsilon_decay,
+                "buffer_capacity": buffer_capacity,
+                "batch_size": batch_size,
+                "target_update_freq": target_update_freq,
+                "use_encoder": use_encoder,
+                "pos_enc_freqs": pos_enc_freqs,
+            },
         }
-    })
+    )
     plot_rewards(episode_rewards)
     env_manager.close()
 
-    env_vis = EnvironmentManager(
-        render_mode="human",
-        seed=seed,
-        environment=env_name
-    )
+    env_vis = EnvironmentManager(render_mode="human", seed=seed, environment=env_name)
     state, _ = env_vis.reset()
     print("Training complete. Starting human-rendered mode (CTRL+C to exit)")
     try:
