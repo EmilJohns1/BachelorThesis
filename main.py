@@ -22,7 +22,7 @@ def main(args):
     elif args.agent == "dqn-encoder":
         train_dqn(env_name=args.env, episodes=args.training_time, use_encoder=True)
     elif args.agent == "dqn":
-        train_dqn(env_name=args.env, episodes=args.training_time)
+        train_dqn(env_name=args.env)
     elif args.agent == "model-based":
         if args.find_optimal_k:
             find_k = True

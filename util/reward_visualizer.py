@@ -11,13 +11,11 @@ import itertools
 
 
 def plot_rewards(episode_rewards):
-    # Calculate running mean and std
     running_means = np.cumsum(episode_rewards) / np.arange(1, len(episode_rewards) + 1)
     running_stds = [
         np.std(episode_rewards[: i + 1]) for i in range(len(episode_rewards))
     ]
 
-    # Plot rewards, mean, and standard deviation
     plt.figure(figsize=(10, 6))
     plt.plot(
         range(1, len(episode_rewards) + 1), episode_rewards, label="Rewards", alpha=0.5
