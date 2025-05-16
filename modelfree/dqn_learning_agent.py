@@ -1,12 +1,12 @@
 import random
-import numpy as np
 from collections import deque
-
 import torch
 import torch.nn as nn
 import torch.optim as optim
-
 from env_manager import EnvironmentManager
+
+import numpy as np
+
 from util.logger import write_to_json
 
 from util.reward_visualizer import plot_multiple_runs, plot_avg_rewards_recursive, compare_experiments
@@ -15,6 +15,7 @@ from util.reward_visualizer import plot_multiple_runs, plot_avg_rewards_recursiv
 
 def flatten_state(state):
     return np.array(state).flatten()
+
 
 # Positional encoding. Trying to find out if it works better than baseline.
 class PositionalEncoder:
@@ -44,7 +45,7 @@ class DQNNetwork(nn.Module):
             nn.ReLU(),
             nn.Linear(hidden_size, hidden_size),
             nn.ReLU(),
-            nn.Linear(hidden_size, action_dim)
+            nn.Linear(hidden_size, action_dim),
         )
 
     def forward(self, x):
@@ -66,7 +67,7 @@ class ReplayBuffer:
             np.array(actions),
             np.array(rewards, dtype=np.float32),
             np.array(next_states),
-            np.array(dones, dtype=np.float32)
+            np.array(dones, dtype=np.float32),
         )
 
     def __len__(self):
@@ -87,7 +88,7 @@ class DQNAgent:
         batch_size=64,
         target_update_freq=100,
         use_encoder=False,
-        pos_enc_freqs=10
+        pos_enc_freqs=10,
     ):
 
         if isinstance(obs_shape, (tuple, list)):
@@ -111,18 +112,15 @@ class DQNAgent:
         self.epsilon_step = 0
         self.batch_size = batch_size
 
-
         self.main_net = DQNNetwork(self.input_dim, action_dim)
         self.target_net = DQNNetwork(self.input_dim, action_dim)
         self.target_net.load_state_dict(self.main_net.state_dict())
         self.target_net.eval()
 
-
         self.optimizer = optim.Adam(self.main_net.parameters(), lr=lr)
         self.replay_buffer = ReplayBuffer(capacity=buffer_capacity)
         self.target_update_freq = target_update_freq
         self.learn_step_counter = 0
-
 
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.main_net.to(self.device)
@@ -137,7 +135,7 @@ class DQNAgent:
     def select_action(self, state):
         self.epsilon = max(
             self.epsilon_end,
-            self.epsilon - (1.0 - self.epsilon_end) / self.epsilon_decay
+            self.epsilon - (1.0 - self.epsilon_end) / self.epsilon_decay,
         )
         if random.random() < self.epsilon:
             return random.randrange(self.action_dim)
@@ -159,7 +157,9 @@ class DQNAgent:
     def update(self):
         if len(self.replay_buffer) < self.batch_size:
             return
-        states, actions, rewards, next_states, dones = self.replay_buffer.sample(self.batch_size)
+        states, actions, rewards, next_states, dones = self.replay_buffer.sample(
+            self.batch_size
+        )
         states = np.array([self.process_state(s) for s in states])
         next_states = np.array([self.process_state(s) for s in next_states])
 
@@ -208,7 +208,7 @@ def train_dqn(
     batch_size: int = 64,
     target_update_freq: int = 100,
     use_encoder: bool = False,
-    pos_enc_freqs: int = 10
+    pos_enc_freqs: int = 10,
 ):
     
     for run in range(26, 26 + runs):

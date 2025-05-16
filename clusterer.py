@@ -63,7 +63,9 @@ class Clusterer:
             self.is_initialized = True
 
         n_iter = 5  # Number of Gauss-Seidel sweeps
-        reward_weights = softmax(X_rewards/50) # Temperature of 50 has been shown to be optimal in other methods
+        reward_weights = softmax(
+            X_rewards / 50
+        )  # Temperature of 50 has been shown to be optimal in other methods
         for _ in range(n_iter):
             print(f"Iteration {_}")
             for i in range(self.K):
