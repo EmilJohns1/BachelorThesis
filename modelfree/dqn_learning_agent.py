@@ -197,7 +197,7 @@ def train_dqn(
     env_name: str = "CartPole-v1",
     episodes: int = 100,
     testing_episodes: int = 100,
-    runs: int = 75,
+    runs: int = 100,
     max_steps: int = 500,
     lr: float = 1e-3,
     gamma: float = 1.0,
@@ -211,7 +211,7 @@ def train_dqn(
     pos_enc_freqs: int = 10,
 ):
     
-    for run in range(26, 26 + runs):
+    for run in range(1, runs + 1):
         # New random seed per run
         seed_train = random.randint(0, 2**32 - 1)
         seed_test  = random.randint(0, 2**32 - 1)

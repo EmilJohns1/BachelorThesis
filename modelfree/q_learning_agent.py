@@ -33,7 +33,7 @@ class QLearningAgent:
         action_space,
         state_bins,
         alpha=0.1,
-        gamma=0.99,
+        gamma=1.00,
         epsilon=1.0,
         epsilon_min=0.10,
         epsilon_decay=0.99,
