@@ -19,12 +19,14 @@ cd https://github.com/EmilJohns1/IDATT2900.git
 
 ### Step 2: Download Packages
 ```bash
-pip r requirements.txt
+pip install -r requirements.txt
 ```
 
 ### Step 3: Execute Terminal Line Commands
 Run the program with command-line arguments specified in `main.py`. For example:
-`python main.py --agent model-based --env CartPole-v1 --training_time 100`
+```bash
+python main.py --agent model-based --env CartPole-v1 --training_time 100`
+```
 
 ### Additional Information  
 - The `requirements.txt` file has been tested with the `CartPole-v1` environment.  
