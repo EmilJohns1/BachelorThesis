@@ -47,9 +47,7 @@ class Model:
             learning_rate=0.02,
             action_space_n=action_space_n,
         )
-        self.original_states: np.ndarray = np.empty(
-            (0, obs_dim)
-        ) 
+        self.original_states: np.ndarray = np.empty((0, obs_dim))
         self.rewards: np.ndarray = np.empty(0)
         self.original_rewards = np.empty(0)
         self.reward_weights = np.ones(0)
@@ -62,9 +60,7 @@ class Model:
 
         self.new_transitions_index = np.zeros(len(self.actions), dtype=int)
 
-        self.discount_factor: float = (
-            discount_factor
-        )
+        self.discount_factor: float = discount_factor
         self.states_mean = np.zeros(obs_dim)
         self.M2 = np.zeros(obs_dim)
         self.states_std = np.ones(obs_dim)
@@ -241,16 +237,12 @@ class Model:
         cluster_weights = np.zeros(num_clusters)
 
         for i, centroid in enumerate(self.clustered_states):
-            cluster_indices = np.where(self.cluster_labels == i)[
-                0
-            ]
+            cluster_indices = np.where(self.cluster_labels == i)[0]
             cluster_states = states_array[cluster_indices]
             cluster_rewards_raw = self.rewards[cluster_indices]
 
             if len(cluster_states) > 0:
-                dist = np.sum(
-                    np.square(cluster_states - centroid), axis=1
-                )
+                dist = np.sum(np.square(cluster_states - centroid), axis=1)
                 weights = np.exp(-dist / gaussian_width)
 
                 weighted_rewards = np.sum(weights * cluster_rewards_raw)
@@ -259,9 +251,7 @@ class Model:
                 cluster_rewards[i] = (
                     weighted_rewards / total_weight if total_weight > 0 else 0
                 )
-                cluster_weights[i] = (
-                    total_weight 
-                )
+                cluster_weights[i] = total_weight
 
         self.rewards = cluster_rewards
         self.states = new_states

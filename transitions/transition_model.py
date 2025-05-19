@@ -132,7 +132,7 @@ class Delta_Transition_Model:
     def update_delta_predictors(self, states):
         for action in range(self.action_space_n):
             if len(self.state_action_transitions_from[action]) < 2:
-                continue 
+                continue
 
             X = states[self.state_action_transitions_from[action]]
             y = np.array(self.transition_delta[action])

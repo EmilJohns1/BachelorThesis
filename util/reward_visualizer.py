@@ -54,9 +54,7 @@ def plot_multiple_runs(folder_name, title, field, block=True):
         return
 
     num_episodes = min(len(rewards) for rewards in all_rewards)
-    all_rewards = [
-        rewards[:num_episodes] for rewards in all_rewards
-    ]
+    all_rewards = [rewards[:num_episodes] for rewards in all_rewards]
     all_rewards = np.array(all_rewards)
 
     mean_rewards = np.mean(all_rewards, axis=0)

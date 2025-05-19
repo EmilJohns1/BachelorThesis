@@ -1,7 +1,6 @@
 import gymnasium
 
 
-
 class EnvironmentManager:
     def __init__(self, render_mode, seed, environment="CartPole-v1"):
         self.env = gymnasium.make(environment, render_mode=render_mode)
