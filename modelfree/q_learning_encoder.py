@@ -1,10 +1,12 @@
 import random
-import numpy as np
-import gymnasium as gym
 import time
+import gymnasium as gym
+
+import numpy as np
 
 from util.logger import write_to_json
 from util.reward_visualizer import plot_rewards
+
 
 class Neuron_Encoder:
     def __init__(self, n=5, gaussian_width=3.0):
@@ -24,11 +26,18 @@ class Neuron_Encoder:
             encoded.append(weights)
         return np.concatenate(encoded)
 
+
 class RBFQLearningAgent:
-    def __init__(self, action_space, encoder,
-                 alpha=0.01, gamma=0.99,
-                 epsilon=1.0, epsilon_decay=0.995,
-                 epsilon_min=0.01):
+    def __init__(
+        self,
+        action_space,
+        encoder,
+        alpha=0.01,
+        gamma=0.99,
+        epsilon=1.0,
+        epsilon_decay=0.995,
+        epsilon_min=0.01,
+    ):
         self.action_space = action_space
         self.encoder = encoder
         self.alpha = alpha
@@ -57,20 +66,21 @@ class RBFQLearningAgent:
     def learn(self, state, action, reward, next_state, done):
         features = self.encoder.encode(state)
         q_current = np.dot(features, self.weights[:, action])
-        
+
         q_next = np.max(self.predict(next_state))
         target = reward + (0 if done else self.gamma * q_next)
         error = target - q_current
-        
+
         self.weights[:, action] += self.alpha * error * features
 
         if done:
             self.epsilon = max(self.epsilon_min, self.epsilon * self.epsilon_decay)
 
+
 def train_rbf_q_learning(env_name="CartPole-v1", episodes=100, seed=42):
     np.random.seed(seed)
     random.seed(seed)
-    
+
     env = gym.make(env_name)
     env.reset(seed=seed)
 
@@ -104,13 +114,14 @@ def train_rbf_q_learning(env_name="CartPole-v1", episodes=100, seed=42):
             "epsilon_min": agent.epsilon_min,
             "epsilon_decay": agent.epsilon_decay,
             "seed": seed,
-        }
+        },
     }
-    
+
     write_to_json(data)
     plot_rewards(episode_rewards)
 
     env.close()
+
 
 if __name__ == "__main__":
     train_rbf_q_learning()

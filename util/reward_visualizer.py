@@ -1,3 +1,4 @@
+import itertools
 import os
 from datetime import datetime
 
@@ -6,8 +7,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 import json
-
-import itertools
 
 
 def plot_rewards(episode_rewards):
@@ -161,7 +160,9 @@ def plot_avg_rewards_recursive(root_folder, field="testing_rewards", block=True)
         plt.show(block=(block if i == len(folders) - 1 else False))
 
 
-def compare_experiments(*folders, title="", field="testing_rewards", block=True, labels=None):
+def compare_experiments(
+    *folders, title="", field="testing_rewards", block=True, labels=None
+):
     plt.figure(figsize=(10, 6))
 
     line_styles = ["-", "--", "-.", ":"]
@@ -187,11 +188,15 @@ def compare_experiments(*folders, title="", field="testing_rewards", block=True,
 
         mean_rewards = np.mean(all_rewards, axis=0)
         running_means = np.cumsum(mean_rewards) / np.arange(1, len(mean_rewards) + 1)
-        running_stds = [np.std(mean_rewards[:i + 1]) for i in range(len(mean_rewards))]
+        running_stds = [np.std(mean_rewards[: i + 1]) for i in range(len(mean_rewards))]
 
         linestyle, marker = next(style_cycle)
-        label = labels[idx] if labels and idx < len(labels) else os.path.basename(folder)
-        plt.plot(running_means, label=label, linestyle=linestyle, marker=marker, markevery=50)
+        label = (
+            labels[idx] if labels and idx < len(labels) else os.path.basename(folder)
+        )
+        plt.plot(
+            running_means, label=label, linestyle=linestyle, marker=marker, markevery=50
+        )
         plt.fill_between(
             range(len(running_means)),
             np.array(running_means) - np.array(running_stds),
