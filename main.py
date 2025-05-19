@@ -61,9 +61,8 @@ if __name__ == "__main__":
     parser.add_argument(
         "--run_clustering",
         type=int,
-        help="Enable clustering and specify the number of clusters (k)"
+        help="Enable clustering and specify the number of clusters (k)",
     )
-
 
     args = parser.parse_args()
     main(args)

@@ -108,8 +108,8 @@ def train_model_based_agent(
 
                         cluster_visualizer = ClusterVisualizer(model=model)
 
-                        #cluster_visualizer.plot_clusters()
-                        #cluster_visualizer.plot_reward_distribution_per_cluster()
+                        # cluster_visualizer.plot_clusters()
+                        # cluster_visualizer.plot_reward_distribution_per_cluster()
                         cluster_visualizer.plot_rewards_before_clustering()
                         cluster_visualizer.plot_rewards_after_clustering()
 
