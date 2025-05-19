@@ -1,6 +1,7 @@
 import random
 import time
 import gymnasium as gym
+
 import numpy as np
 
 from util.logger import write_to_json
@@ -53,7 +54,9 @@ class QLearningAgent:
     def learn(self, state, action, reward, next_state, done):
         old = self.q_table[state][action]
         nxt = np.max(self.q_table[next_state])
-        update = (1 - self.alpha) * old + self.alpha * (reward + self.gamma * nxt * (not done))
+        update = (1 - self.alpha) * old + self.alpha * (
+            reward + self.gamma * nxt * (not done)
+        )
         self.q_table[state][action] = update
         if done:
             self.epsilon = max(self.epsilon_min, self.epsilon * self.epsilon_decay)
@@ -71,7 +74,6 @@ def train_q_learning(
     np.random.seed(seed)
 
     bins = create_bins()
-
 
     for run in range(1, runs + 1):
 
@@ -99,21 +101,25 @@ def train_q_learning(
                 agent.learn(dstate, action, r, nd, done or truncated)
                 dstate = nd
             train_rewards.append(total)
-            print(f"[Run {run} Train] Ep {ep}/{episodes} → Reward: {total:.2f}, Epsilon: {agent.epsilon:.3f}")
+            print(
+                f"[Run {run} Train] Ep {ep}/{episodes} → Reward: {total:.2f}, Epsilon: {agent.epsilon:.3f}"
+            )
         env_train.close()
 
-        write_to_json({
-            "title": f"train{run}",
-            "phase": "training",
-            "environment": env_name,
-            "seed": seed_train,
-            "episodes": episodes,
-            "rewards": train_rewards,
-            "alpha": agent.alpha,
-            "gamma": agent.gamma,
-            "epsilon_min": agent.epsilon_min,
-            "epsilon_decay": agent.epsilon_decay,
-        })
+        write_to_json(
+            {
+                "title": f"train{run}",
+                "phase": "training",
+                "environment": env_name,
+                "seed": seed_train,
+                "episodes": episodes,
+                "rewards": train_rewards,
+                "alpha": agent.alpha,
+                "gamma": agent.gamma,
+                "epsilon_min": agent.epsilon_min,
+                "epsilon_decay": agent.epsilon_decay,
+            }
+        )
 
         # short delay before testing
         time.sleep(3)
@@ -142,19 +148,22 @@ def train_q_learning(
             print(f"[Run {run} Test ] Ep {ep}/{testing_episodes} → Reward: {total:.2f}")
         env_test.close()
 
-        write_to_json({
-            "title": f"test{run}",
-            "phase": "testing",
-            "environment": env_name,
-            "seed": seed_test,
-            "episodes": testing_episodes,
-            "rewards": test_rewards,
-            "alpha": agent.alpha,
-            "gamma": agent.gamma,
-            "epsilone": agent.epsilon,
-        })
+        write_to_json(
+            {
+                "title": f"test{run}",
+                "phase": "testing",
+                "environment": env_name,
+                "seed": seed_test,
+                "episodes": testing_episodes,
+                "rewards": test_rewards,
+                "alpha": agent.alpha,
+                "gamma": agent.gamma,
+                "epsilone": agent.epsilon,
+            }
+        )
 
         time.sleep(3)
+
 
 if __name__ == "__main__":
     train_q_learning()
