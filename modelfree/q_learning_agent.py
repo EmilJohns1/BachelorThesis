@@ -32,10 +32,10 @@ class QLearningAgent:
         self,
         action_space,
         state_bins,
-        alpha=0.1,
-        gamma=0.99,
+        alpha=1.0,
+        gamma=1.0,
         epsilon=1.0,
-        epsilon_min=0.10,
+        epsilon_min=0.1,
         epsilon_decay=0.99,
     ):
         self.action_space = action_space

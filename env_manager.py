@@ -1,9 +1,4 @@
 import gymnasium
-import pygame
-
-import numpy as np
-
-from util.positional_encoder import PositionalEncoder
 
 
 class EnvironmentManager:
