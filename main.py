@@ -13,7 +13,7 @@ def main(args):
     elif args.agent == "dqn-encoder":
         train_dqn(env_name=args.env, episodes=args.training_time, use_encoder=True)
     elif args.agent == "dqn":
-        train_dqn(env_name=args.env, episodes=args.training_time)
+        train_dqn(env_name=args.env)
     elif args.agent == "model-based":
         if args.run_clustering:
             k = args.run_clustering

@@ -7,3 +7,5 @@ IDATT2900.code-workspace
 /.idea
 venv/
 idea/
+/logs
+*.log
