@@ -208,3 +208,67 @@ def compare_experiments(
     plt.legend()
     plt.ylim(0, 500)
     plt.show(block=block)
+
+
+# Helper function to compare multiple logs with different type of logs
+def compare_mixed_logs(folders, phase, title, field="rewards", labels=None, block=True):
+    plt.figure(figsize=(10, 6))
+    markers = ["o", "s", "D", "^", "v", "<", ">", "x", "*", "+"]
+
+    for idx, folder in enumerate(folders):
+        runs = []
+        for fn in os.listdir(folder):
+            if not fn.endswith(".json"): continue
+            data = json.load(open(os.path.join(folder, fn)))
+            if data.get("phase") == phase:
+                r = data.get(field)
+            elif f"{phase}_rewards" in data:
+                r = data[f"{phase}_rewards"]
+            else:
+                continue
+            runs.append(r)
+        if not runs:
+            print(f"No '{phase}' data in {folder}")
+            continue
+
+        num_eps = min(len(r) for r in runs)
+        arr = np.array([r[:num_eps] for r in runs])
+        label = labels[idx] if labels and idx < len(labels) else os.path.basename(folder)
+        marker = markers[idx % len(markers)]
+        mark_pos = np.linspace(0, num_eps-1, 3, dtype=int)
+
+        if phase == 'training':
+            mean_ep = arr.mean(axis=0)
+            std_ep  = arr.std(axis=0)
+            final = mean_ep[-1]
+            print(f"{label} ({phase}) final mean: {final:.2f}")
+            plt.plot(range(1, num_eps+1), mean_ep, label=label, marker=marker, markevery=mark_pos)
+            plt.fill_between(range(1, num_eps+1), mean_ep-std_ep, mean_ep+std_ep, alpha=0.3)
+        else:
+            mean_ep = arr.mean(axis=0)
+            running = np.cumsum(mean_ep) / np.arange(1, num_eps+1)
+            running_std = [np.std(mean_ep[:i+1]) for i in range(num_eps)]
+            final = running[-1]
+            print(f"{label} ({phase}) final running mean: {final:.2f}")
+            plt.plot(range(1, num_eps+1), running, label=label, marker=marker, markevery=mark_pos)
+            plt.fill_between(range(1, num_eps+1), running-running_std, running+running_std, alpha=0.3)
+
+    plt.xlabel("Episode")
+    plt.ylabel("Episode Reward")
+    plt.title(title)
+    plt.legend()
+    plt.ylim(0, 500)
+    plt.show(block=block)
+
+
+if __name__ == '__main__':
+    base = os.getcwd()
+    logs = os.path.join(base, 'logs')
+    folders = [
+        os.path.join(logs, 'dqn'),
+        os.path.join(logs, 'dqn-encoder'),
+    ]
+    labels = ["DQN", "DQN with encoder"]
+
+    compare_mixed_logs(folders, 'training', "Training: DQN and DQN with encoder)", labels=labels, block=False)
+    compare_mixed_logs(folders, 'testing',  "Testing: DQN and DQN with encoder", labels=labels, block=True)
