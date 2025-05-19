@@ -1,5 +1,4 @@
 import copy
-from collections import defaultdict
 import gymnasium as gym
 from scipy.special import log_softmax
 from scipy.special import softmax
@@ -11,13 +10,10 @@ import numpy as np
 
 import matplotlib.pyplot as plt
 
-from sklearn.cluster import KMeans
 from sklearn.cluster import MiniBatchKMeans
 from sklearn.cluster import k_means
-from sklearn.linear_model import LinearRegression
 from sklearn.mixture import GaussianMixture
 
-from util.cluster_visualizer import ClusterVisualizer
 from util.clustering_alg import Clustering_Type
 
 
@@ -42,7 +38,7 @@ class Model:
         else:
             raise ValueError("Unsupported observation space type!")
         self.state_dimensions = obs_dim
-        self.states: np.ndarray = np.empty((0, obs_dim))  # States are stored here
+        self.states: np.ndarray = np.empty((0, obs_dim))
         self.clusterer = Clusterer(
             K=k,
             D=obs_dim,
@@ -51,10 +47,8 @@ class Model:
             learning_rate=0.02,
             action_space_n=action_space_n,
         )
-        self.original_states: np.ndarray = np.empty(
-            (0, obs_dim)
-        )  # States are stored here
-        self.rewards: np.ndarray = np.empty(0)  # Value for each state index
+        self.original_states: np.ndarray = np.empty((0, obs_dim))
+        self.rewards: np.ndarray = np.empty(0)
         self.original_rewards = np.empty(0)
         self.reward_weights = np.ones(0)
 
@@ -66,9 +60,7 @@ class Model:
 
         self.new_transitions_index = np.zeros(len(self.actions), dtype=int)
 
-        self.discount_factor: float = (
-            discount_factor  # Low discount factor penalizes longer episodes
-        )
+        self.discount_factor: float = discount_factor
         self.states_mean = np.zeros(obs_dim)
         self.M2 = np.zeros(obs_dim)
         self.states_std = np.ones(obs_dim)
@@ -114,11 +106,11 @@ class Model:
         self.states = np.vstack((self.states, new_state))
         n = len(self.states)
 
-        delta = new_state - self.states_mean  # Element-wise difference
-        self.states_mean += delta / n  # Update mean
+        delta = new_state - self.states_mean
+        self.states_mean += delta / n
 
-        self.M2 += delta * (new_state - self.states_mean)  # Update variance accumulator
-        self.states_std = np.sqrt(self.M2 / n)  # Compute standard deviation
+        self.M2 += delta * (new_state - self.states_mean)
+        self.states_std = np.sqrt(self.M2 / n)
 
     def scale_rewards(self, log_softmaxed_rewards, new_max=0):
         rewards = np.array(log_softmaxed_rewards)
@@ -242,34 +234,25 @@ class Model:
 
         num_clusters = len(self.clustered_states)
         cluster_rewards = np.zeros(num_clusters)
-        cluster_weights = np.zeros(num_clusters)  # Sum of weights for normalization
+        cluster_weights = np.zeros(num_clusters)
 
         for i, centroid in enumerate(self.clustered_states):
-            # Compute distances between centroid and all states in the cluster
-            cluster_indices = np.where(self.cluster_labels == i)[
-                0
-            ]  # Get state indices in this cluster
+            cluster_indices = np.where(self.cluster_labels == i)[0]
             cluster_states = states_array[cluster_indices]
             cluster_rewards_raw = self.rewards[cluster_indices]
 
             if len(cluster_states) > 0:
-                dist = np.sum(
-                    np.square(cluster_states - centroid), axis=1
-                )  # Squared Euclidean distance
-                weights = np.exp(-dist / gaussian_width)  # Apply Gaussian weighting
+                dist = np.sum(np.square(cluster_states - centroid), axis=1)
+                weights = np.exp(-dist / gaussian_width)
 
-                # Weighted sum of rewards
                 weighted_rewards = np.sum(weights * cluster_rewards_raw)
-                total_weight = np.sum(weights)  # Normalization factor
+                total_weight = np.sum(weights)
 
                 cluster_rewards[i] = (
                     weighted_rewards / total_weight if total_weight > 0 else 0
                 )
-                cluster_weights[i] = (
-                    total_weight  # Keep track of the total weight for debugging
-                )
+                cluster_weights[i] = total_weight
 
-        # Store the computed cluster rewards
         self.rewards = cluster_rewards
         self.states = new_states
         self.states_mean = np.mean(self.states, axis=0)

@@ -1,4 +1,3 @@
-from time import perf_counter
 import gymnasium as gym
 
 import numpy as np
@@ -10,7 +9,7 @@ class Agent:
         self.gaussian_width = gaussian_width
         self.exploration_rate = exploration_rate
         self.testing = False
-        self.predicted_deltas = {}  # Used to adjust splines in the model
+        self.predicted_deltas = {}
 
     def normalize_states(self):
         states_mean = np.zeros(self.model.state_dimensions)

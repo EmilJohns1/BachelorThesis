@@ -1,14 +1,11 @@
 import pandas as pd
 import plotly.express as px
 import seaborn as sns
-from mpl_toolkits.mplot3d import Axes3D
 
 import numpy as np
 
 import matplotlib.pyplot as plt
-from matplotlib import colormaps
 
-from sklearn.cluster import AgglomerativeClustering
 from sklearn.manifold import TSNE
 
 
@@ -85,7 +82,6 @@ class ClusterVisualizer:
     def plot_reward_distribution_per_cluster(
         self, interactive=False, top_n_clusters=50
     ):
-        # Create a DataFrame for easier plotting
         df = pd.DataFrame(
             {
                 "Cluster": self.model.cluster_labels,
@@ -93,13 +89,11 @@ class ClusterVisualizer:
             }
         )
 
-        # Optional: Reduce to top-N clusters by size
         if top_n_clusters is not None:
             top_clusters = df["Cluster"].value_counts().nlargest(top_n_clusters).index
             df = df[df["Cluster"].isin(top_clusters)]
 
         if interactive:
-            # Interactive Plotly box plot
             fig = px.box(
                 df,
                 x="Cluster",
@@ -110,7 +104,6 @@ class ClusterVisualizer:
             fig.update_layout(xaxis_title="Cluster ID", yaxis_title="Original Reward")
             fig.show()
         else:
-            # Static Seaborn box plot
             plt.figure(figsize=(12, 7))
             sns.boxplot(x="Cluster", y="Reward", data=df)
             plt.xticks(rotation=90)
