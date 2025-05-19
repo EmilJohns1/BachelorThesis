@@ -211,14 +211,15 @@ def compare_experiments(
 
 
 # Helper function to compare multiple logs with different type of logs
-def compare_mixed_logs(folders, phase, title, field="rewards", labels=None, block=True):
+def compare_mixed_logs(folders, phase, field="rewards", labels=None, block=True):
     plt.figure(figsize=(10, 6))
     markers = ["o", "s", "D", "^", "v", "<", ">", "x", "*", "+"]
 
     for idx, folder in enumerate(folders):
         runs = []
         for fn in os.listdir(folder):
-            if not fn.endswith(".json"): continue
+            if not fn.endswith(".json"):
+                continue
             data = json.load(open(os.path.join(folder, fn)))
             if data.get("phase") == phase:
                 r = data.get(field)
@@ -227,6 +228,7 @@ def compare_mixed_logs(folders, phase, title, field="rewards", labels=None, bloc
             else:
                 continue
             runs.append(r)
+
         if not runs:
             print(f"No '{phase}' data in {folder}")
             continue
@@ -255,7 +257,6 @@ def compare_mixed_logs(folders, phase, title, field="rewards", labels=None, bloc
 
     plt.xlabel("Episode")
     plt.ylabel("Episode Reward")
-    plt.title(title)
     plt.legend()
     plt.ylim(0, 500)
     plt.show(block=block)
@@ -266,9 +267,10 @@ if __name__ == '__main__':
     logs = os.path.join(base, 'logs')
     folders = [
         os.path.join(logs, 'dqn'),
-        os.path.join(logs, 'dqn-encoder'),
+        os.path.join(logs, 'q-learning'),
+        os.path.join(logs, 'gw_0_5')
     ]
-    labels = ["DQN", "DQN with encoder"]
+    labels = ["DQN", "Q-learning", "Delta Variant (σ=0.5)"]
 
-    compare_mixed_logs(folders, 'training', "Training: DQN and DQN with encoder)", labels=labels, block=False)
-    compare_mixed_logs(folders, 'testing',  "Testing: DQN and DQN with encoder", labels=labels, block=True)
+    compare_mixed_logs(folders, 'training', labels=labels, block=False)
+    compare_mixed_logs(folders, 'testing', labels=labels, block=True)
