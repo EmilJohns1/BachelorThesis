@@ -132,7 +132,7 @@ class Delta_Transition_Model:
     def update_delta_predictors(self, states):
         for action in range(self.action_space_n):
             if len(self.state_action_transitions_from[action]) < 2:
-                continue  # Not enough data
+                continue 
 
             X = states[self.state_action_transitions_from[action]]
             y = np.array(self.transition_delta[action])
@@ -162,17 +162,13 @@ class Delta_Transition_Model:
         ]
 
         for i, centroid in enumerate(clustered_states):
-            # Get the states belonging to centroid i
             cluster_indices = np.where(cluster_labels == i)[0]
             for action in range(self.action_space_n):
-                # Get the states that are present in transition_from for this action
                 from_indices = np.array(self.state_action_transitions_from[action])
                 deltas = np.array(self.transition_delta[action])
 
-                # Create a mask where from_indices are in cluster_indices
                 valid_mask = np.isin(from_indices, cluster_indices)
 
-                # Select the corresponding states and deltas
                 cluster_states = states_array[from_indices[valid_mask]]
                 selected_deltas = deltas[valid_mask]
 

@@ -28,16 +28,10 @@ def discretize_state(state, bins):
 
 
 class QLearningAgent:
-    def __init__(
-        self,
-        action_space,
-        state_bins,
-        alpha=0.1,
-        gamma=0.99,
-        epsilon=1.0,
-        epsilon_min=0.10,
-        epsilon_decay=0.99,
-    ):
+    def __init__(self, action_space, state_bins,
+                 alpha=1.0, gamma=1.0,
+                 epsilon=1.0, epsilon_min=0.1,
+                 epsilon_decay=0.99):
         self.action_space = action_space
         self.state_bins = state_bins
         self.alpha = alpha
@@ -59,14 +53,11 @@ class QLearningAgent:
         old_value = self.q_table[state][action]
         next_max = np.max(self.q_table[next_state])
 
-        new_value = (1 - self.alpha) * old_value + self.alpha * (
-            reward + self.gamma * next_max * (not done)
-        )
+        new_value = (1 - self.alpha) * old_value + self.alpha * (reward + self.gamma * next_max * (not done))
         self.q_table[state][action] = new_value
 
         if done:
             self.epsilon = max(self.epsilon_min, self.epsilon * self.epsilon_decay)
-
 
 def train_q_learning(env_name="CartPole-v1", episodes=100, seed=42):
     np.random.seed(seed)
@@ -109,7 +100,7 @@ def train_q_learning(env_name="CartPole-v1", episodes=100, seed=42):
             "epsilon_min": agent.epsilon_min,
             "epsilon_decay": agent.epsilon_decay,
             "seed": seed,
-        },
+        }
     }
     write_to_json(data)
     plot_rewards(episode_rewards)

@@ -1,18 +1,9 @@
 import argparse
 
-# Model-free agents
 from modelfree.dqn_learning_agent import train_dqn
 from modelfree.q_learning_agent import train_q_learning
 from modelfree.q_learning_encoder import train_rbf_q_learning
 from train_model_based import train_model_based_agent
-
-# plot_multiple_runs(folder_name="logs/gaussian_width_action_reward_2_0/clustering_width_0_5", title="0.5", field="testing_rewards", block=False)
-# plot_multiple_runs(folder_name="logs/gaussian_width_action_reward_2_0/clustering_width_2_0", title="2.0", field="testing_rewards", block=False)
-# plot_multiple_runs(folder_name="logs/gaussian_width_action_reward_2_0/clustering_width_3_0", title="3.0", field="testing_rewards", block=False)
-# plot_multiple_runs(folder_name="logs/gaussian_width_action_reward_2_0/clustering_width_5_0", title="5.0", field="testing_rewards")
-from util.reward_visualizer import compare_experiments
-from util.reward_visualizer import plot_avg_rewards_recursive
-from util.reward_visualizer import plot_multiple_runs
 
 
 def main(args):

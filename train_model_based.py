@@ -1,13 +1,9 @@
 import random
-import sys
 import time
 import pygame
 from agent import Agent
 from env_manager import EnvironmentManager
 from model import Model
-from transitions.transition_method import Transition_Method
-
-import numpy as np
 
 from util.cluster_visualizer import ClusterVisualizer
 from util.clustering_alg import Clustering_Type
