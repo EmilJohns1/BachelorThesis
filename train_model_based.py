@@ -25,8 +25,8 @@ def train_model_based_agent(
         environment = env_name if env_name else "CartPole-v1"
         discount_factor = 1.0
         epsilon_decay = 0.999
-        k = 500
-        gaussian_width_rewards = 0.3
+        k = 2000
+        gaussian_width_rewards = 0.5
         training_seed = random.randint(0, 2**32 - 1)
         testing_seed = random.randint(0, 2**32 - 1)
         comments = ""
@@ -124,9 +124,9 @@ def train_model_based_agent(
                     episodes = -1
                     finished_training = True
 
-                    # env_manager = EnvironmentManager(
-                    #    render_mode="human", environment=environment, seed=testing_seed
-                    # )
+                    env_manager = EnvironmentManager(
+                        render_mode="human", environment=environment, seed=testing_seed
+                    )
 
                 elif episodes < training_time and not finished_training:
                     model.update_model(states, actions, rewards)
