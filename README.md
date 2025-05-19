@@ -16,8 +16,8 @@ Please ensure that Python is already installed on your system before proceeding.
 To obtain the source code, clone this repository using the following command in your terminal or command prompt:
 
 ```bash
-git clone https://github.com/EmilJohns1/IDATT2900.git
-cd https://github.com/EmilJohns1/IDATT2900.git
+git clone https://github.com/EmilJohns1/BachelorThesis.git
+cd BachelorThesis
 ```
 
 ### Step 2: Download Packages

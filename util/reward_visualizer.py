@@ -229,25 +229,46 @@ def compare_mixed_logs(folders, phase, field="rewards", labels=None, block=True)
 
         num_eps = min(len(r) for r in runs)
         arr = np.array([r[:num_eps] for r in runs])
-        label = labels[idx] if labels and idx < len(labels) else os.path.basename(folder)
+        label = (
+            labels[idx] if labels and idx < len(labels) else os.path.basename(folder)
+        )
         marker = markers[idx % len(markers)]
-        mark_pos = np.linspace(0, num_eps-1, 3, dtype=int)
+        mark_pos = np.linspace(0, num_eps - 1, 3, dtype=int)
 
-        if phase == 'training':
+        if phase == "training":
             mean_ep = arr.mean(axis=0)
-            std_ep  = arr.std(axis=0)
+            std_ep = arr.std(axis=0)
             final = mean_ep[-1]
             print(f"{label} ({phase}) final mean: {final:.2f}")
-            plt.plot(range(1, num_eps+1), mean_ep, label=label, marker=marker, markevery=mark_pos)
-            plt.fill_between(range(1, num_eps+1), mean_ep-std_ep, mean_ep+std_ep, alpha=0.3)
+            plt.plot(
+                range(1, num_eps + 1),
+                mean_ep,
+                label=label,
+                marker=marker,
+                markevery=mark_pos,
+            )
+            plt.fill_between(
+                range(1, num_eps + 1), mean_ep - std_ep, mean_ep + std_ep, alpha=0.3
+            )
         else:
             mean_ep = arr.mean(axis=0)
-            running = np.cumsum(mean_ep) / np.arange(1, num_eps+1)
-            running_std = [np.std(mean_ep[:i+1]) for i in range(num_eps)]
+            running = np.cumsum(mean_ep) / np.arange(1, num_eps + 1)
+            running_std = [np.std(mean_ep[: i + 1]) for i in range(num_eps)]
             final = running[-1]
             print(f"{label} ({phase}) final running mean: {final:.2f}")
-            plt.plot(range(1, num_eps+1), running, label=label, marker=marker, markevery=mark_pos)
-            plt.fill_between(range(1, num_eps+1), running-running_std, running+running_std, alpha=0.3)
+            plt.plot(
+                range(1, num_eps + 1),
+                running,
+                label=label,
+                marker=marker,
+                markevery=mark_pos,
+            )
+            plt.fill_between(
+                range(1, num_eps + 1),
+                running - running_std,
+                running + running_std,
+                alpha=0.3,
+            )
 
     plt.xlabel("Episode")
     plt.ylabel("Episode Reward")
@@ -256,15 +277,15 @@ def compare_mixed_logs(folders, phase, field="rewards", labels=None, block=True)
     plt.show(block=block)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     base = os.getcwd()
-    logs = os.path.join(base, 'logs')
+    logs = os.path.join(base, "logs")
     folders = [
-        os.path.join(logs, 'dqn'),
-        os.path.join(logs, 'q-learning'),
-        os.path.join(logs, 'gw_0_5')
+        os.path.join(logs, "dqn"),
+        os.path.join(logs, "q-learning"),
+        os.path.join(logs, "gw_0_5"),
     ]
     labels = ["DQN", "Q-learning", "Delta Variant (σ=0.5)"]
 
-    compare_mixed_logs(folders, 'training', labels=labels, block=False)
-    compare_mixed_logs(folders, 'testing', labels=labels, block=True)
+    compare_mixed_logs(folders, "training", labels=labels, block=False)
+    compare_mixed_logs(folders, "testing", labels=labels, block=True)

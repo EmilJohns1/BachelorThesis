@@ -1,17 +1,24 @@
-import random
 import os
-import json
-import numpy as np
+import random
+from collections import deque
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from collections import deque
 from env_manager import EnvironmentManager
+
+import numpy as np
+
+import json
+
 from util.logger import write_to_json
-from util.reward_visualizer import plot_multiple_runs, plot_avg_rewards_recursive, compare_experiments
+from util.reward_visualizer import compare_experiments
+from util.reward_visualizer import plot_avg_rewards_recursive
+from util.reward_visualizer import plot_multiple_runs
+
 
 def flatten_state(state):
     return np.array(state).flatten()
+
 
 # Positional encoder to see if it works better.
 class PositionalEncoder:
@@ -24,11 +31,12 @@ class PositionalEncoder:
             div_term = np.exp(-np.log(10000.0) * i / self.d_model)
             pe[i] = np.sin(x * div_term)
             if i + 1 < self.d_model:
-                pe[i+1] = np.cos(x * div_term)
+                pe[i + 1] = np.cos(x * div_term)
         return pe
 
     def encode(self, state: np.ndarray) -> np.ndarray:
         return np.concatenate([self.encode_scalar(x) for x in state])
+
 
 # Simple feed-forward Q-network
 class DQNNetwork(nn.Module):
@@ -44,6 +52,7 @@ class DQNNetwork(nn.Module):
 
     def forward(self, x):
         return self.net(x)
+
 
 # Replay buffer for experience replay
 class ReplayBuffer:
@@ -66,6 +75,7 @@ class ReplayBuffer:
 
     def __len__(self):
         return len(self.buffer)
+
 
 # DQN agent with fixed epsilon = 0.1
 class DQNAgent:
@@ -148,7 +158,9 @@ class DQNAgent:
     def update(self):
         if len(self.replay_buffer) < self.batch_size:
             return
-        states, actions, rewards, next_states, dones = self.replay_buffer.sample(self.batch_size)
+        states, actions, rewards, next_states, dones = self.replay_buffer.sample(
+            self.batch_size
+        )
         states = np.array([self.process_state(s) for s in states])
         next_states = np.array([self.process_state(s) for s in next_states])
 
@@ -159,10 +171,10 @@ class DQNAgent:
         dones_t = torch.FloatTensor(dones).unsqueeze(1).to(self.device)
 
         # compute current Q
-        q_vals      = self.main_net(states_t).gather(1, actions_t)
+        q_vals = self.main_net(states_t).gather(1, actions_t)
         # compute target Q
         with torch.no_grad():
-            next_q  = self.target_net(next_states_t).max(dim=1, keepdim=True)[0]
+            next_q = self.target_net(next_states_t).max(dim=1, keepdim=True)[0]
             target_q = rewards_t + self.gamma * (1.0 - dones_t) * next_q
 
         loss = nn.MSELoss()(q_vals, target_q)
@@ -180,6 +192,7 @@ class DQNAgent:
     def load(self, path="dqn_model.pth"):
         self.main_net.load_state_dict(torch.load(path))
         self.target_net.load_state_dict(self.main_net.state_dict())
+
 
 # Training loop
 def train_dqn(
@@ -200,7 +213,7 @@ def train_dqn(
     for run in range(1, runs + 1):
         # seeds
         seed_train = random.randint(0, 2**32 - 1)
-        seed_test  = random.randint(0, 2**32 - 1)
+        seed_test = random.randint(0, 2**32 - 1)
         random.seed(seed_train)
         np.random.seed(seed_train)
         torch.manual_seed(seed_train)
@@ -208,18 +221,22 @@ def train_dqn(
             torch.cuda.manual_seed_all(seed_train)
 
         # create environment and agent
-        env_train = EnvironmentManager(render_mode=None, environment=env_name, seed=seed_train)
+        env_train = EnvironmentManager(
+            render_mode=None, environment=env_name, seed=seed_train
+        )
         obs_shape = env_train.env.observation_space.shape
         action_dim = env_train.env.action_space.n
         agent = DQNAgent(
-            obs_shape, action_dim,
-            lr=lr, gamma=gamma,
+            obs_shape,
+            action_dim,
+            lr=lr,
+            gamma=gamma,
             epsilon=epsilon,
             buffer_capacity=buffer_capacity,
             batch_size=batch_size,
             target_update_freq=target_update_freq,
             use_encoder=use_encoder,
-            pos_enc_freqs=pos_enc_freqs
+            pos_enc_freqs=pos_enc_freqs,
         )
 
         # Training
@@ -237,25 +254,29 @@ def train_dqn(
                 if done or truncated:
                     break
             training_rewards.append(total)
-            print(f"[Run {run} Train] Ep {ep}/{episodes} epsilon={agent.epsilon:.2f}, Reward: {total:.2f}")
+            print(
+                f"[Run {run} Train] Ep {ep}/{episodes} epsilon={agent.epsilon:.2f}, Reward: {total:.2f}"
+            )
         env_train.close()
 
-        write_to_json({
-            "title": f"train{run}",
-            "phase": "training",
-            "environment": env_name,
-            "seed": seed_train,
-            "episodes": episodes,
-            "rewards": training_rewards,
-            "lr": lr,
-            "gamma": gamma,
-            "epsilon": epsilon,
-            "buffer_capacity": buffer_capacity,
-            "batch_size": batch_size,
-            "target_update_freq": target_update_freq,
-            "use_encoder": use_encoder,
-            "pos_enc_freqs": pos_enc_freqs,
-        })
+        write_to_json(
+            {
+                "title": f"train{run}",
+                "phase": "training",
+                "environment": env_name,
+                "seed": seed_train,
+                "episodes": episodes,
+                "rewards": training_rewards,
+                "lr": lr,
+                "gamma": gamma,
+                "epsilon": epsilon,
+                "buffer_capacity": buffer_capacity,
+                "batch_size": batch_size,
+                "target_update_freq": target_update_freq,
+                "use_encoder": use_encoder,
+                "pos_enc_freqs": pos_enc_freqs,
+            }
+        )
 
         # Testing (greedy)
         random.seed(seed_test)
@@ -264,7 +285,9 @@ def train_dqn(
         if torch.cuda.is_available():
             torch.cuda.manual_seed_all(seed_test)
 
-        env_test = EnvironmentManager(render_mode=None, environment=env_name, seed=seed_test)
+        env_test = EnvironmentManager(
+            render_mode=None, environment=env_name, seed=seed_test
+        )
         agent.epsilon = 0.0
         agent.main_net.eval()
 
@@ -282,22 +305,25 @@ def train_dqn(
             print(f"[Run {run} Test ] Ep {ep}/{testing_episodes} Reward: {total:.2f}")
         env_test.close()
 
-        write_to_json({
-            "title": f"test{run}",
-            "phase": "testing",
-            "environment": env_name,
-            "seed": seed_test,
-            "episodes": testing_episodes,
-            "rewards": testing_rewards,
-            "lr": lr,
-            "gamma": gamma,
-            "epsilon_test": agent.epsilon,
-            "buffer_capacity": buffer_capacity,
-            "batch_size": batch_size,
-            "target_update_freq": target_update_freq,
-            "use_encoder": use_encoder,
-            "pos_enc_freqs": pos_enc_freqs,
-        })
+        write_to_json(
+            {
+                "title": f"test{run}",
+                "phase": "testing",
+                "environment": env_name,
+                "seed": seed_test,
+                "episodes": testing_episodes,
+                "rewards": testing_rewards,
+                "lr": lr,
+                "gamma": gamma,
+                "epsilon_test": agent.epsilon,
+                "buffer_capacity": buffer_capacity,
+                "batch_size": batch_size,
+                "target_update_freq": target_update_freq,
+                "use_encoder": use_encoder,
+                "pos_enc_freqs": pos_enc_freqs,
+            }
+        )
+
 
 if __name__ == "__main__":
     train_dqn()
