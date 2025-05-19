@@ -12,7 +12,7 @@ from util.reward_visualizer import plot_rewards
 
 
 def train_model_based_agent(
-    env_name, training_time, show_clusters_and_rewards, find_k, lower_k, upper_k, step
+    env_name, training_time, show_clusters_and_rewards, k, run_clustering
 ):
     for i in range(100):
         print("--- Starting new run ---")
@@ -21,7 +21,6 @@ def train_model_based_agent(
         environment = env_name if env_name else "CartPole-v1"
         discount_factor = 1.0
         epsilon_decay = 0.999
-        k = 2000
         gaussian_width_rewards = 0.5
         training_seed = random.randint(0, 2**32 - 1)
         testing_seed = random.randint(0, 2**32 - 1)
@@ -30,6 +29,8 @@ def train_model_based_agent(
         testing_time = 100
         training_rewards = []
         testing_rewards = []
+        k = k
+        run_clustering = run_clustering
         #################################################
 
         episode_rewards = []
@@ -44,10 +45,6 @@ def train_model_based_agent(
             observation_space=env_manager.env.observation_space,
             k=k,
             sigma=gaussian_width_rewards,
-            find_k=find_k,
-            lower_k=lower_k,
-            upper_k=upper_k,
-            step=step,
         )
         agent = Agent(model=model, gaussian_width=gaussian_width_rewards)
 
@@ -97,11 +94,12 @@ def train_model_based_agent(
                     end = time.time()
                     print("Time :{}".format(end - start))
 
-                    model.cluster_states(
-                        k=k,
-                        gaussian_width=gaussian_width_rewards,
-                        cluster_type=Clustering_Type.K_Means,
-                    )
+                    if run_clustering:
+                        model.cluster_states(
+                            k=k,
+                            gaussian_width=gaussian_width_rewards,
+                            cluster_type=Clustering_Type.K_Means,
+                        )
 
                     agent.testing = True
 
@@ -110,8 +108,8 @@ def train_model_based_agent(
 
                         cluster_visualizer = ClusterVisualizer(model=model)
 
-                        cluster_visualizer.plot_clusters()
-                        cluster_visualizer.plot_reward_distribution_per_cluster()
+                        #cluster_visualizer.plot_clusters()
+                        #cluster_visualizer.plot_reward_distribution_per_cluster()
                         cluster_visualizer.plot_rewards_before_clustering()
                         cluster_visualizer.plot_rewards_after_clustering()
 

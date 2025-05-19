@@ -15,20 +15,18 @@ def main(args):
     elif args.agent == "dqn":
         train_dqn(env_name=args.env, episodes=args.training_time)
     elif args.agent == "model-based":
-        if args.find_optimal_k:
-            find_k = True
-            lower_k, upper_k, step = args.find_optimal_k
+        if args.run_clustering:
+            k = args.run_clustering
+            run_clustering = True
         else:
-            find_k = False
-            lower_k, upper_k, step = None, None, None
+            k = 3500
+            run_clustering = False
         train_model_based_agent(
             args.env,
             args.training_time,
             args.show_clusters_and_rewards,
-            find_k,
-            lower_k,
-            upper_k,
-            step,
+            k,
+            run_clustering,
         )
     else:
         raise ValueError("Agent type not supported")
@@ -61,17 +59,16 @@ if __name__ == "__main__":
         help="Include this if you want to show clusters and rewards",
     )
     parser.add_argument(
-        "--find_optimal_k",
+        "--run_clustering",
         type=int,
-        nargs=3,
-        metavar=("LOWER_K", "UPPER_K", "STEP"),
-        help="Find optimal k with range: lower_k, upper_k, step",
+        help="Enable clustering and specify the number of clusters (k)"
     )
+
 
     args = parser.parse_args()
     main(args)
 
-# Run by executing etc: python main.py --agent model-based --env CartPole-v1 --training_time 100 --show_clusters_and_rewards --find_optimal_k 15000 25000 500
+# Run by executing etc: python main.py --agent model-based --env CartPole-v1 --training_time 100 --show_clusters_and_rewards --run_clustering 3500
 # Simple run: python main.py --agent model-based --env CartPole-v1 --training_time 100
 # python main.py --agent q-learning --env CartPole-v1 --training_time 100
 # python main.py --agent encoder-q-learning --env CartPole-v1 --training_time 100
