@@ -1,0 +1,9 @@
+version: '3.8'
+
+services:
+  formatter:
+    build: .
+    volumes:
+      - .:/app
+    working_dir: /app
+    command: make format

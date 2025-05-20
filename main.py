@@ -1,41 +1,73 @@
-from env_manager import EnvironmentManager
-from model import Model
-from agent import Agent
-import pygame
+import argparse
+from modelfree.dqn_learning_agent import train_dqn
+from modelfree.q_learning_agent import train_q_learning
+from modelfree.q_learning_encoder import train_rbf_q_learning
+from train_model_based import train_model_based_agent
 
-render_mode = "human"  # Set to None to run without graphics
 
-env_manager = EnvironmentManager(render_mode=render_mode, seed=0)
-model = Model(action_space_n=env_manager.env.action_space.n)
-agent = Agent(model)
+def main(args):
+    if args.agent == "q-learning":
+        train_q_learning(env_name=args.env, episodes=args.training_time)
+    elif args.agent == "encoder-q-learning":
+        train_rbf_q_learning(env_name=args.env, episodes=args.training_time)
+    elif args.agent == "dqn-encoder":
+        train_dqn(env_name=args.env, episodes=args.training_time, use_encoder=True)
+    elif args.agent == "dqn":
+        train_dqn(env_name=args.env)
+    elif args.agent == "model-based":
+        if args.run_clustering:
+            k = args.run_clustering
+            run_clustering = True
+        else:
+            k = 3500
+            run_clustering = False
+        train_model_based_agent(
+            args.env,
+            args.training_time,
+            args.show_clusters_and_rewards,
+            k,
+            run_clustering,
+        )
+    else:
+        raise ValueError("Agent type not supported")
 
-rewards = 0.
-actions = []
-states = []
-state, info = env_manager.reset()
-states.append(state)
 
-while True:
-    if render_mode == "human":
-        for event in pygame.event.get():
-            if event.type == pygame.KEYDOWN and (event.key == pygame.K_ESCAPE or event.key == pygame.K_q):
-                env_manager.close()
-                exit()
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--agent",
+        type=str,
+        choices=[
+            "q-learning",
+            "encoder-q-learning",
+            "dqn",
+            "dqn-encoder",
+            "model-based",
+        ],
+        required=True,
+        help="Choose the RL agent",
+    )
+    parser.add_argument(
+        "--env", type=str, default="CartPole-v1", help="Choose the environment"
+    )
+    parser.add_argument(
+        "--training_time", type=int, default=100, help="Training time in episodes"
+    )
+    parser.add_argument(
+        "--show_clusters_and_rewards",
+        action="store_true",
+        help="Include this if you want to show clusters and rewards",
+    )
+    parser.add_argument(
+        "--run_clustering",
+        type=int,
+        help="Enable clustering and specify the number of clusters (k)",
+    )
 
-    states_mean, states_std = agent.normalize_states()
-    action_rewards, weight_sums = agent.compute_action_rewards(state, states_mean, states_std)
-    action = agent.get_action(action_rewards, weight_sums)
+    args = parser.parse_args()
+    main(args)
 
-    actions.append(action)
-    state, reward, terminated, truncated, info = env_manager.step(action)
-    states.append(state)
-    rewards += float(reward)
-
-    if terminated or truncated:
-        print(f"rewards: {rewards}")
-        model.update_model(states, actions, rewards)
-        rewards = 0.
-        actions.clear()
-        states.clear()
-        state, info = env_manager.reset()
-        states.append(state)
+# Run by executing etc: python main.py --agent model-based --env CartPole-v1 --training_time 100 --show_clusters_and_rewards --run_clustering 3500
+# Simple run: python main.py --agent model-based --env CartPole-v1 --training_time 100
+# python main.py --agent q-learning --env CartPole-v1 --training_time 100
+# python main.py --agent encoder-q-learning --env CartPole-v1 --training_time 100
