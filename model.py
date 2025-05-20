@@ -92,9 +92,9 @@ class Model:
 
     def get_transition_data(self, state, action):
         return (
-            self.transition_model.get_transition_center(state, action),
-            self.transition_model.get_query_points(action, self.states),
-            self.transition_model.get_query_point_rewards(action, self.rewards),
+            self.transition_model.get_transition_query_point(state, action),
+            self.transition_model.get_transition_centres(action, self.states),
+            self.transition_model.get_centre_rewards(action, self.rewards),
         )
 
     def check_transition_error(self, action, actual_delta, error_threshold):

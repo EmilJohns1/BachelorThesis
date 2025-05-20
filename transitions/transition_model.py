@@ -30,7 +30,7 @@ class Direct_Transition_Model:
     def has_transitions(self, action):
         return len(self.state_action_transitions_from[action]) > 0
 
-    def get_transition_center(self, state, _):
+    def get_transition_query_point(self, state, _):
         return state
 
     def update_predictions(self, _action, _actual_delta, _error_threshold, _states):
@@ -71,10 +71,10 @@ class Direct_Transition_Model:
         self.state_action_transitions_to = clustered_transitions_to
         return new_states
 
-    def get_query_points(self, action, states):
+    def get_transition_centres(self, action, states):
         return states[self.state_action_transitions_from[action]]
 
-    def get_query_point_rewards(self, action, rewards):
+    def get_centre_rewards(self, action, rewards):
         return rewards[self.state_action_transitions_to[action]]
 
 
@@ -98,7 +98,7 @@ class Delta_Transition_Model:
     def has_transitions(self, action):
         return len(self.state_action_transitions_from[action]) > 0
 
-    def get_transition_center(self, state, action):
+    def get_transition_query_point(self, state, action):
         predicted_delta = np.zeros_like(state)  # Same dimension as states
         if len(self.delta_predictor) > 0:
             predicted_delta = (
@@ -109,10 +109,10 @@ class Delta_Transition_Model:
         self.predicted_deltas[action] = predicted_delta
         return state + predicted_delta
 
-    def get_query_points(self, action, states):
+    def get_transition_centres(self, action, states):
         return states[self.state_action_transitions_to[action]]
 
-    def get_query_point_rewards(self, action, rewards):
+    def get_centre_rewards(self, action, rewards):
         return rewards[self.state_action_transitions_from[action]]
 
     def update_predictions(self, action, actual_delta, error_threshold, states):

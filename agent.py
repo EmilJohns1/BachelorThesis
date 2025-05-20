@@ -30,15 +30,15 @@ class Agent:
 
         for action in self.model.actions:
             if self.model.transition_model.has_transitions(action):
-                (center, query_points, query_point_rewards) = (
+                (query_point, centres, centre_rewards) = (
                     self.model.get_transition_data(state, action)
                 )
 
                 weight = np.exp(
                     -np.sum(
                         np.square(
-                            (center - states_mean) / states_std
-                            - (query_points - states_mean) / states_std
+                            (query_point - states_mean) / states_std
+                            - (centres - states_mean) / states_std
                         ),
                         axis=1,
                     )
@@ -49,7 +49,7 @@ class Agent:
                 if sum_weight > 0:
                     action_weights[action] = sum_weight
                     action_rewards[action] = (
-                        np.sum(weight * query_point_rewards) / sum_weight
+                        np.sum(weight * centre_rewards) / sum_weight
                     )
         return action_rewards, action_weights
 
